@@ -124,9 +124,10 @@ Cada extremo (**Inicio** y **Fin**) tiene sus propios ajustes, que se editan de 
 
 - Al crecer los controles, el panel dejó de caber. Ahora:
   - Cada control ocupa **una sola fila**: nombre, barra y casilla.
-  - Hay **pestañas**: Pasada, Extremos, Fuga y Papel. Papel incluye el formato, la rejilla, las capas visibles y el tamaño del PNG.
+  - Hay **pestañas**: Pasada, Extremos, Fuga y Papel. Papel incluye el formato, la rejilla y las capas visibles.
   - El **nodo seleccionado** (X, Y, radio y apertura) va fijo encima de las pestañas, con borde azul, y solo aparece si hay un nodo seleccionado.
-  - **Exportar** (SVG, PNG y Copiar) está en la barra de arriba, y sus mensajes salen debajo del lienzo.
+  - **Exportar** es un solo botón en la barra que abre un menú: Descargar SVG, Descargar PNG (con tamaño y transparencia en el mismo menú) y Copiar SVG. Se cierra al elegir algo, al pulsar fuera o con Esc. Los mensajes salen debajo del lienzo.
+    - *Antes eran tres botones sueltos (SVG en azul, PNG y Copiar) y las opciones del PNG estaban en la pestaña Papel. Al usuario no le gustaba, y otra pestaña habrían sido demasiadas.*
 - El slider del radio es progresivo: el radio es máx · (s/1000)², donde máx es el doble del lado mayor del papel, o el radio actual si es mayor. Ni el slider ni el asa ponen tope.
   - *Una versión limitó el radio al que «cabía» sin quitar sitio a las vecinas, y le quitaba rango al asa. Se descartó.*
 

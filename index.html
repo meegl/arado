@@ -55,6 +55,11 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--acc);font-weight:500}
 .bar .push{margin-left:auto}
 #nodesec{border-color:var(--acc)}
+.menu{position:relative}
+.menupop{position:absolute;right:0;top:calc(100% + 6px);z-index:20;width:270px;max-width:calc(100vw - 32px);display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.menupop>button{text-align:left;display:flex;flex-direction:column;gap:1px}
+.menupop small{color:var(--mut);font-size:11px}
+.menupop .hint{margin:0}
 .none{color:var(--mut);font-size:13px;margin:0}
 textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sans Mono",monospace;background:var(--field);color:var(--fg);border:1px solid var(--line);border-radius:6px}
 </style>
@@ -76,10 +81,18 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         <button id="undo" title="Deshacer (Ctrl+Z)">Deshacer</button>
         <button id="redo" title="Rehacer (Ctrl+Mayús+Z)">Rehacer</button>
       </div>
-      <div class="seg push" role="group" aria-label="Exportar">
-        <button id="dl" class="primary" hidden title="Descargar el SVG por capas">SVG</button>
-        <button id="dlpng" hidden title="Descargar PNG (tamaño en la pestaña Papel)">PNG</button>
-        <button id="copy" title="Copiar el SVG al portapapeles">Copiar</button>
+      <div class="menu push">
+        <button id="exbtn" aria-haspopup="true" aria-expanded="false" aria-controls="expop">Exportar ▾</button>
+        <div class="menupop" id="expop" role="menu" hidden>
+          <button id="dl" role="menuitem" hidden>Descargar SVG <small>por capas, para Illustrator o Affinity</small></button>
+          <button id="dlpng" role="menuitem" hidden>Descargar PNG</button>
+          <div class="row">
+            <label>Tamaño<select id="pngw"><option value="1200">1200 px</option><option value="2400" selected>2400 px</option><option value="3000">3000 px</option></select></label>
+            <label class="inline" style="align-self:end;padding-bottom:6px"><input type="checkbox" id="pngT">Transparente</label>
+          </div>
+          <button id="copy" role="menuitem">Copiar SVG</button>
+          <p class="hint" id="layinfo"></p>
+        </div>
       </div>
     </div>
     <div class="stage" id="stage"><canvas id="cv" aria-label="Lienzo de la composición"></canvas></div>
@@ -177,12 +190,6 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         <label class="inline"><input type="checkbox" id="sGrid">Rejilla</label>
         <label class="inline"><input type="checkbox" id="sGuides">Guías de edición (G)</label>
         <p class="hint">Se exporta lo que ves, salvo las guías, que nunca se exportan.</p>
-        <h3>PNG</h3>
-        <div class="row">
-          <label>Tamaño<select id="pngw"><option value="1200">1200 px de ancho</option><option value="2400" selected>2400 px de ancho</option><option value="3000">3000 px de ancho</option></select></label>
-          <label class="inline" style="align-self:end;padding-bottom:6px"><input type="checkbox" id="pngT">Transparente</label>
-        </div>
-        <p class="hint" id="layinfo"></p>
       </div>
     </section>
   </aside>
@@ -907,6 +914,7 @@ window.addEventListener('keydown',function(e){
   if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();$('redo').click();return}
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(k==='delete'||k==='backspace'){e.preventDefault();if(selN>=0)delNode();else delPasada();return}
+  if(k==='escape'&&!$('expop').hidden){exMenu(false);return}
   if(k==='escape'){selP=-1;selN=-1;syncPanel();redraw();return}
   if(k==='v')setMode('move');else if(k==='a')setMode('add');else if(k==='p')startNew();else if(k==='g')$('sGuides').click();
 });
@@ -977,6 +985,12 @@ if(!(window.claude&&claude.use)){
   dlApi={save:function(r){return new Promise(function(res){var u=URL.createObjectURL(new Blob([r.data],{type:/\.png$/.test(r.filename)?'image/png':'image/svg+xml'})),l=document.createElement('a');l.href=u;l.download=r.filename;document.body.appendChild(l);l.click();l.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);res({status:'saved'})})}};
   $('dl').hidden=false;$('dlpng').hidden=false;
 }else{claude.use('downloads').then(function(d){if(d){dlApi=d;$('dl').hidden=false;$('dlpng').hidden=false}}).catch(function(){})}
+/* menú Exportar */
+function exMenu(open){$('expop').hidden=!open;$('exbtn').setAttribute('aria-expanded',open)}
+$('exbtn').addEventListener('click',function(e){e.stopPropagation();exMenu($('expop').hidden)});
+$('expop').addEventListener('click',function(e){e.stopPropagation()});
+document.addEventListener('click',function(){exMenu(false)});
+['dl','dlpng','copy'].forEach(function(id){$(id).addEventListener('click',function(){exMenu(false)})});
 $('dl').addEventListener('click',function(){
   if(!dlApi)return; var info=$('exinfo');
   dlApi.save({filename:fname('svg'),data:svgText()}).then(function(){info.textContent='SVG guardado. Ábrelo en Illustrator o Affinity: cada pasada llega como un grupo con nombre.'})
