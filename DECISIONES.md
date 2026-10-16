@@ -37,12 +37,13 @@ Hacer la base geométrica de carteles hechos con haces de líneas paralelas que 
 
 - **Mover (`V`):**
   - Arrastrar un nodo lo mueve.
-  - Arrastrar el cuerpo de la pasada la mueve entera (con el imán, en pasos de celda).
+  - Arrastrar el cuerpo de la pasada la mueve entera (con el imán, en pasos de celda). Cada nodo conserva todos sus valores (radio, apertura, grosor, quiebro…), y el desplazamiento se frena en el borde de la mesa para que la forma no se deforme.
+    - *Un fallo anterior copiaba solo la posición y el radio, y al mover la pasada se perdían la apertura, el grosor y los quiebros.*
   - El **punto azul** de cada esquina cambia su radio. Está en la bisectriz, 14 px más allá del punto medio del arco, para que se pueda coger aunque el radio sea 0.
 - **Añadir (`A`):**
   - Clic en un hueco: añade un nodo al final de la pasada seleccionada, o al principio si está seleccionado el primer nodo. Un círculo marca el extremo por el que se sigue.
   - Sin pasada seleccionada, el clic empieza una pasada nueva.
-  - Clic sobre un tramo de la guía: inserta un nodo en ese punto.
+  - Clic sobre un tramo de la guía: inserta un nodo en ese punto. El nodo hereda la media de apertura y grosor de sus dos vecinos, para que la pasada no cambie de golpe.
 - Cuando un nodo deja de ser extremo, recibe un radio por defecto: medio ancho de la pasada más una celda. Así los surcos interiores no se pliegan.
 - **Nueva pasada (`P`)** quita la selección y pasa a Añadir. La pasada nueva copia los ajustes (también los extremos) de la seleccionada o de la última. **Esc** quita la selección.
 - El **primer nodo** de la guía se dibuja redondo: marca el **inicio**, para saber qué extremo es cuál.

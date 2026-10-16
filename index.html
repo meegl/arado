@@ -951,7 +951,9 @@ cv.addEventListener('pointerdown',function(e){
   if(mode==='add'){
     if(hn){selP=hn.p;selN=hn.n;syncPanel();redraw();return}
     var hs=hitSeg(p,false);
-    if(hs){pushHist();var pe=S.pasadas[hs.p],q=snapPt({x:hs.x,y:hs.y});pe.nodes.splice(hs.s+1,0,{x:q.x,y:q.y,r:defR(pe)});selP=hs.p;selN=hs.s+1;changed();return}
+    if(hs){pushHist();var pe=S.pasadas[hs.p],q=snapPt({x:hs.x,y:hs.y});var na=pe.nodes[hs.s],nb=pe.nodes[hs.s+1];
+      // el nodo nuevo hereda la media de apertura y grosor de sus vecinos para no cambiar la pasada
+      pe.nodes.splice(hs.s+1,0,{x:q.x,y:q.y,r:defR(pe),a:Math.round((ap(na)+ap(nb))/2),g:Math.round(((na.g==null?100:na.g)+(nb.g==null?100:nb.g))/2)});selP=hs.p;selN=hs.s+1;changed();return}
     pushHist();var q2=clampPt(snapPt(p));
     var pe2=S.pasadas[selP];
     if(!pe2){selP=newPasada({x:q2.x,y:q2.y,r:0});selN=0}
@@ -984,7 +986,11 @@ cv.addEventListener('pointermove',function(e){
       if(f>1e-6)pe.nodes[drag.n].r=snapR(Math.max(0,proj)/f)}
   }else{
     var dx=p.x-drag.x0,dy=p.y-drag.y0;if(S.snap){var c=cell();dx=Math.round(dx/c)*c;dy=Math.round(dy/c)*c}
-    pe.nodes=JSON.parse(drag.orig).map(function(nd){var q=clampPt({x:nd.x+dx,y:nd.y+dy});return {x:q.x,y:q.y,r:nd.r}});
+    // se mueve la pasada entera, con todos los valores de cada nodo (radio, apertura,
+    // grosor, quiebro…); el desplazamiento se frena en el borde de la mesa para no deformarla
+    var orig=JSON.parse(drag.orig),HH=H();
+    orig.forEach(function(nd){dx=Math.max(-PB-nd.x,Math.min(W+PB-nd.x,dx));dy=Math.max(-PB-nd.y,Math.min(HH+PB-nd.y,dy))});
+    pe.nodes=orig.map(function(nd){nd.x+=dx;nd.y+=dy;return nd});
   }
   compute();syncPanel();redraw();
 });
