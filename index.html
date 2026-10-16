@@ -213,12 +213,11 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         <h3>Perspectiva</h3>
         <label class="inline"><input type="checkbox" id="pon">Ver en perspectiva</label>
         <div class="stack mt" id="pbox2">
-          <div class="sl" title="Altura del horizonte, desde arriba del papel"><span>Horizonte (mm)</span><input type="number" id="phyn" step="1"><input type="range" id="phy"></div>
-          <div class="sl" title="Posición horizontal del punto de fuga"><span>Fuga X (mm)</span><input type="number" id="pvxn" step="1"><input type="range" id="pvx"></div>
-          <div class="sl" title="Cuanto menor, más fuerte es el efecto"><span>Profundidad (mm)</span><input type="number" id="pdn" step="1" min="10"><input type="range" id="pd"></div>
-          <div class="sl" title="Agranda o reduce toda la perspectiva desde el punto de fuga"><span>Escala (%)</span><input type="number" id="pzn" step="1" min="10"><input type="range" id="pz" data-def="100"></div>
+          <div class="sl" title="Ancho del dibujo en el borde de abajo del papel (100 % = igual que el papel)"><span>Ancho abajo (%)</span><input type="number" id="pbn" step="1" min="10"><input type="range" id="pb" data-def="100"></div>
+          <div class="sl" title="Ancho del dibujo en el borde de arriba: cuanto menos, más se achata y se aleja"><span>Ancho arriba (%)</span><input type="number" id="ptn" step="1" min="2"><input type="range" id="pt" data-def="40"></div>
+          <div class="sl" title="Hacia dónde convergen, a izquierda o derecha"><span>Fuga X (mm)</span><input type="number" id="pvxn" step="1"><input type="range" id="pvx"></div>
         </div>
-        <p class="hint">La composición se proyecta sobre un suelo que se aleja hacia el horizonte; el borde de abajo del papel no cambia. Se edita sobre el dibujo proyectado. Con perspectiva, los surcos se exportan como formas rellenas.</p>
+        <p class="hint">La composición se proyecta sobre un suelo que se aleja: amplía la parte de abajo y estrecha la de arriba. Lo de abajo queda abajo del papel y lo de arriba, arriba. Se edita sobre el dibujo proyectado. Con perspectiva, los surcos se exportan como formas rellenas.</p>
         <h3>Capas visibles</h3>
         <label class="inline"><input type="checkbox" id="sPaper">Fondo de papel</label>
         <label class="inline"><input type="checkbox" id="sGrid">Rejilla</label>
@@ -962,13 +961,22 @@ function cell(){return W/S.cols}
  * igual y hacia arriba todo mengua hacia el horizonte (hy) y el punto de fuga (vx).
  * Un punto a una distancia yp por encima de y0 se escala por s = D / (D + yp).
  * Es una homografía: las rectas siguen siendo rectas. */
-function persp(){if(!S.persp)S.persp={on:false,hy:H()*0.12,vx:W/2,D:H()*0.9,z:1};return S.persp}
-function pOn(){return !!(S.persp&&S.persp.on)}
-function pS(x,y){if(!pOn())return 1;var P=S.persp,yp=Math.max(H()-y,-0.9*P.D);return P.D/(P.D+yp)}
-// z: escala de toda la perspectiva desde el punto de fuga (1 = el borde de abajo a tamaño real)
-function pZ(){return S.persp&&S.persp.z>0?S.persp.z:1}
-function Pj(x,y){if(!pOn())return [x,y];var P=S.persp,s=pS(x,y)*pZ(),y0=H();return [P.vx+(x-P.vx)*s,P.hy+(y0-P.hy)*s]}
-function Ij(X,Y){if(!pOn())return [X,Y];var P=S.persp,y0=H(),s=Math.max(0.02,(Y-P.hy)/(y0-P.hy)/pZ());return [P.vx+(X-P.vx)/(s*pZ()),y0-(P.D/s-P.D)]}
+// B: ancho del borde de abajo (1 = el papel); T: ancho del borde de arriba. El borde
+// de abajo de la composición queda abajo del papel y el de arriba, arriba: la
+// perspectiva nunca se sale por abajo ni deja el papel vacío.
+function persp(){var P=S.persp;if(!P||P.B==null){S.persp={on:!!(P&&P.on),vx:P&&P.vx!=null?P.vx:W/2,B:1,T:0.4};}return S.persp}
+function pOn(){return !!(S.persp&&S.persp.on&&S.persp.B!=null)}
+/* Homografía de un suelo que se aleja. Con v = y/H (0 arriba, 1 abajo):
+ * escala horizontal λ(v) = 1/(p + q·v), con p = 1/T y q = 1/B − 1/T (λ(0)=T, λ(1)=B);
+ * X = vx + (x − vx)·λ;  Y = H·v·λ/B (Y(0)=0, Y(1)=H). Las rectas siguen rectas. */
+function pPQ(){var P=S.persp;return {p:1/P.T,q:1/P.B-1/P.T}}
+function pS(x,y){if(!pOn())return 1;var c=pPQ(),d=c.p+c.q*(y/H());return 1/Math.max(d,0.02)}
+function Pj(x,y){if(!pOn())return [x,y];var P=S.persp,l=pS(x,y);return [P.vx+(x-P.vx)*l,H()*(y/H())*l/P.B]}
+// horizonte: la Y a la que tiende el suelo muy lejos (si arriba es más estrecho que abajo)
+function pHorizon(){var P=S.persp,c=pPQ();return c.q<-1e-9?H()/(P.B*c.q):null}
+function Ij(X,Y){if(!pOn())return [X,Y];var P=S.persp,HH=H(),c=pPQ(),hz=pHorizon();
+  if(hz!=null)Y=Math.max(Y,hz+0.5);
+  var v=Y*P.B*c.p/(HH-Y*P.B*c.q),l=1/Math.max(c.p+c.q*v,0.02);return [P.vx+(X-P.vx)/l,v*HH]}
 // con perspectiva, el suelo llega mucho más lejos a los lados y hacia el fondo
 function pBounds(){var HH=H();return pOn()?{x0:-50*W,x1:51*W,y0:-50*HH,y1:HH+PB}:{x0:-PB,x1:W+PB,y0:-PB,y1:HH+PB}}
 // con perspectiva, cada surco (ya cortado por los cruces) pasa a ser su contorno proyectado
@@ -980,8 +988,8 @@ function projectBuilt(){
       var pcs=L.pieces||[{pts:L.pts,c0:false,c1:false}];
       b.paths[L.pi]={fill:true,w:L.w,d:pcs.map(function(pc){var R=AR.ring(pc.pts,L.w,cap,pc.c0,pc.c1);return R?AR.ringD(R.map(function(p){return Pj(p[0],p[1])})):''}).join('')};
     });
-    b.dots=b.dots.map(function(q){var c=Pj(q[0],q[1]);return [c[0],c[1],q[2]*pS(q[0],q[1])*pZ()]});
-    b.dashes=b.dashes.map(function(x){var a=Pj(x.a[0],x.a[1]),e=Pj(x.b[0],x.b[1]),m=pS((x.a[0]+x.b[0])/2,(x.a[1]+x.b[1])/2)*pZ();
+    b.dots=b.dots.map(function(q){var c=Pj(q[0],q[1]);return [c[0],c[1],q[2]*pS(q[0],q[1])]});
+    b.dashes=b.dashes.map(function(x){var a=Pj(x.a[0],x.a[1]),e=Pj(x.b[0],x.b[1]),m=pS((x.a[0]+x.b[0])/2,(x.a[1]+x.b[1])/2);
       return {w:x.w*m,a:a,b:e,d:'M'+a[0].toFixed(3)+' '+a[1].toFixed(3)+'L'+e[0].toFixed(3)+' '+e[1].toFixed(3)}});
   });
 }
@@ -1094,8 +1102,9 @@ function drawGuides(c,px){
   });
   c.globalAlpha=1;
   // horizonte y punto de fuga
-  if(pOn()){var P=S.persp;c.strokeStyle=GUIDE;c.lineWidth=px;c.setLineDash([8*px,5*px]);c.beginPath();c.moveTo(-PB,P.hy);c.lineTo(W+PB,P.hy);c.stroke();c.setLineDash([]);
-    c.beginPath();c.moveTo(P.vx-7*px,P.hy-7*px);c.lineTo(P.vx+7*px,P.hy+7*px);c.moveTo(P.vx+7*px,P.hy-7*px);c.lineTo(P.vx-7*px,P.hy+7*px);c.stroke()}
+  var hz=pOn()?pHorizon():null;
+  if(hz!=null&&hz>-PB){var P=S.persp;c.strokeStyle=GUIDE;c.lineWidth=px;c.setLineDash([8*px,5*px]);c.beginPath();c.moveTo(-PB,hz);c.lineTo(W+PB,hz);c.stroke();c.setLineDash([]);
+    c.beginPath();c.moveTo(P.vx-7*px,hz-7*px);c.lineTo(P.vx+7*px,hz+7*px);c.moveTo(P.vx+7*px,hz-7*px);c.lineTo(P.vx-7*px,hz+7*px);c.stroke()}
 }
 function redraw(){if(!raf)raf=requestAnimationFrame(draw)}
 
@@ -1118,7 +1127,7 @@ function syncAll(){
 var tab='pasada';
 function syncPersp(){
   var k=K(),P=persp(),HH=H();$('pon').checked=!!P.on;$('pbox2').hidden=!P.on;
-  cfg('phy',0,(HH-10)*k,1,P.hy*k);cfg('pvx',-W*k,2*W*k,1,P.vx*k);cfg('pd',10*k,4*HH*k,1,P.D*k);cfg('pz',10,600,1,Math.round((P.z||1)*100),1);
+  cfg('pb',10,400,1,Math.round(P.B*100),1);cfg('pt',2,150,1,Math.round(P.T*100),1);cfg('pvx',-W*k,2*W*k,1,P.vx*k);
 }
 function syncPanel(){
   var k=K(), pe=S.pasadas[selP], need=tab!=='papel';
@@ -1228,7 +1237,7 @@ function segDist(p,a,b){var dx=b.x-a.x,dy=b.y-a.y,l=dx*dx+dy*dy,t=l?Math.max(0,M
 // tramo de guía más cercano dentro de tol (+ medio ancho de la pasada si wide)
 function hitSeg(p,wide){
   var best=null;
-  var ps=pS(p.x,p.y)*pZ()||1; // con perspectiva, los píxeles de tolerancia valen más en el plano cuanto más lejos
+  var ps=pS(p.x,p.y)||1; // con perspectiva, los píxeles de tolerancia valen más en el plano cuanto más lejos
   for(var i=S.pasadas.length-1;i>=0;i--){var pe=S.pasadas[i],tol=(wide?half(pe)+pe.w/2:0)+6*px()/ps;
     for(var j=0;j<pe.nodes.length-1;j++){var r=segDist(p,pe.nodes[j],pe.nodes[j+1]);if(r.d<=tol&&(!best||r.d<best.d))best={p:i,s:j,d:r.d,x:r.x,y:r.y}}}
   return best;
@@ -1351,10 +1360,9 @@ var nrMax=600;
 document.querySelectorAll('[data-tab]').forEach(function(b){b.addEventListener('click',function(){tab=b.dataset.tab;syncPanel()})});
 function curPersp(){return persp()}
 $('pon').addEventListener('change',function(){pushHist();persp().on=this.checked;changed()});
-bindSl('phy',curPersp,function(P,v){P.hy=Math.max(0,Math.min(H()-10,v/K()))});
+bindSl('pb',curPersp,function(P,v){P.B=Math.max(0.1,Math.min(4,v/100))});
+bindSl('pt',curPersp,function(P,v){P.T=Math.max(0.02,Math.min(1.5,v/100))});
 bindSl('pvx',curPersp,function(P,v){P.vx=v/K()});
-bindSl('pd',curPersp,function(P,v){P.D=Math.max(10,v/K())});
-bindSl('pz',curPersp,function(P,v){P.z=Math.max(0.1,Math.min(6,v/100))});
 bindSl('nt',curN,function(nd,v){nd.t=Math.max(-360,Math.min(360,Math.round(v)))});
 bindSl('plej',curP,function(pe,v){pe.lejos=Math.max(3,Math.min(100,Math.round(v)))});
 $('plejini').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.lejosIni=this.checked;changed()});

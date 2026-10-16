@@ -169,22 +169,32 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
 - Se aplica dentro de `fanMaker`, multiplicando apertura y grosor de cada muestra. Por eso la pasada usa la geometría muestreada y se exporta como formas rellenas.
 - La guía se dibuja y se edita como siempre, sin proyección. La perspectiva de suelo (abajo) sigue como opción aparte en Papel.
 
-### Perspectiva (fase 6)
+### Perspectiva de suelo (fase 6)
 
-- Es un ajuste de toda la composición (`S.persp`, en la pestaña Papel): **Ver en perspectiva**, **Horizonte** (altura desde arriba), **Fuga X**, **Profundidad** (D; cuanto menor, más fuerte) y **Escala** (`z`): agranda o reduce toda la perspectiva desde el punto de fuga. Con más del 100 %, el borde de abajo se sale del papel y la composición ocupa más.
-- **El modelo:** la composición es un suelo que se aleja. El borde de abajo del papel (y0) no cambia; un punto a una distancia yp = y0 − y por encima se escala por s = D / (D + yp) hacia el punto de fuga: X = vx + (x − vx)·s, Y = hy + (y0 − hy)·s.
-  - Es una homografía: las rectas siguen siendo rectas, y los arcos pasan a ser elipses.
-  - Al quitar la perspectiva se ve la composición plana tal cual: los nodos se guardan siempre en el plano.
+- Es un ajuste de toda la composición (`S.persp`, en la pestaña Papel):
+  - **Ver en perspectiva**
+  - **Ancho abajo** (`B`): ancho del dibujo en el borde de abajo, en proporción al papel.
+  - **Ancho arriba** (`T`): ancho en el borde de arriba.
+  - **Fuga X** (`vx`): hacia dónde convergen.
+- **El borde de abajo de la composición queda siempre abajo del papel, y el de arriba, arriba.**
+  - *La primera versión tenía Horizonte, Profundidad y Escala, con el borde de abajo fijo a tamaño real. Agrandarla la sacaba por abajo y, sin agrandar, aplastaba el dibujo y dejaba vacía la mitad de arriba. El usuario propuso controlar «ampliar abajo» y «achatar arriba», y así se rehízo.*
+- **El modelo:** la homografía que lleva el rectángulo del papel a un trapecio. Con v = y/H (0 arriba, 1 abajo):
+  - λ(v) = 1/(p + q·v), con p = 1/T y q = 1/B − 1/T; así λ(0) = T y λ(1) = B.
+  - X = vx + (x − vx)·λ e Y = H·v·λ/B; así Y(0) = 0 e Y(H) = H.
+  - Las rectas siguen siendo rectas, y el escorzo vertical sale solo de la diferencia entre los dos anchos.
+  - Si arriba es más estrecho, el horizonte está en Y = H/(B·q), por encima del papel.
+  - Con los dos anchos al 100 % no hay proyección.
+- Al quitar la perspectiva se ve la composición plana tal cual: los nodos se guardan siempre en el plano.
 - **Se edita sobre el dibujo proyectado:**
   - `toWorld` deshace la proyección del puntero (`Ij`). Los nodos, las asas, el polígono de control y los círculos de las esquinas se dibujan proyectados.
-  - Los nodos y las asas se buscan en pantalla. La tolerancia de los tramos se divide por la escala local, porque lejos un píxel vale más plano.
-  - Con perspectiva, el suelo no tiene el tope del papel: los nodos pueden ir hasta 50 anchos a cada lado y 50 alturas hacia el horizonte. *Antes estaba limitado al ancho del papel, y como el suelo se estrecha al alejarse, arriba no se podían llenar los lados.*
-  - En el lienzo se dibujan el horizonte (discontinuo) y una cruz en el punto de fuga.
+  - Los nodos y las asas se buscan en pantalla. La tolerancia de los tramos se divide por la escala local λ.
+  - Con perspectiva, el suelo no tiene el tope del papel: los nodos pueden ir hasta 50 anchos a cada lado y 50 alturas hacia el fondo.
+  - En el lienzo se dibujan el horizonte (discontinuo) y una cruz en el punto de fuga, si caen cerca del papel.
 - **Dibujo (`projectBuilt`)**, después de los cortes de los cruces:
-  - Cada surco (o cada pieza cortada) pasa a ser su contorno en el plano (`AR.ring`, con sus terminaciones), se proyecta punto a punto y se suaviza (`AR.ringD`). Así el grosor mengua con la distancia, y por eso con perspectiva todo se exporta como **formas rellenas**.
-  - Los puntos se proyectan por el centro y escalan su radio. Los guiones, por sus extremos.
+  - Cada surco (o cada pieza cortada) pasa a ser su contorno en el plano (`AR.ring`, con sus terminaciones), se proyecta punto a punto y se suaviza (`AR.ringD`). Por eso, con perspectiva, todo se exporta como **formas rellenas**.
+  - Los puntos se proyectan por el centro y escalan su radio por λ. Los guiones, por sus extremos.
   - La rejilla cubre un suelo mucho mayor que el papel (de −4 a 5 anchos y hasta 4 alturas de fondo), se proyecta y así se exporta, si está visible.
-- Referencia: el cartel amarillo de flechas.
+- Para que una sola pasada se aleje, sin proyectar todo, está **Alejarse** (arriba).
 
 ### Avisos de aberraciones
 
