@@ -197,7 +197,7 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
   - Los puntos se proyectan por el centro y escalan su radio por λ. Los guiones, por sus extremos.
   - La rejilla cubre un suelo mucho mayor que el papel (de −4 a 5 anchos y hasta 4 alturas de fondo), se proyecta y así se exporta, si está visible.
 - **Doblar hacia arriba** (`fold`): a cierta altura del papel, el suelo se curva y sube como una pared vertical (referencia: el cartel del 11.º Festival de Cine por los Derechos de las Mujeres, 2017).
-  - **Doblez a (mm)** (`fd`): altura del papel, desde abajo, a la que empieza el doblez. **Radio del doblez (mm)** (`fr`): 0 es un codo seco.
+  - **Doblez a (mm)** (`fd`): altura del papel, desde abajo, a la que empieza el doblez. Va de −1 a 2 alturas de papel: negativo es por debajo del papel (solo se ve la pared); por encima del papel, más al fondo (se limita al horizonte). **Radio del doblez (mm)** (`fr`): 0 es un codo seco.
   - Los dos se dan **como se ven en el papel** y se pasan al plano con la inversa del suelo (`pFloorY`) y la escala en el doblez. *En una primera versión se daban en el plano y, con perspectiva fuerte, el doblez caía fuera del papel.*
   - Un punto a una distancia t más allá del doblez queda a profundidad ye y altura h: en el arco, ye = yf − R·sin(t/R) y h = R·(1 − cos(t/R)); después, pared (ye fijo, h crece).
   - En pantalla, Y = (Y del suelo a esa profundidad) − h·λ: la altura sube con la misma escala que el ancho, así que en la pared los surcos son verticales y paralelos.
