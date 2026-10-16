@@ -41,6 +41,7 @@ label.inline{flex-direction:row;align-items:center;gap:8px;color:var(--fg);font-
 input[type=number],input[type=text],select{background:var(--field);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%;min-width:0;min-height:34px;font-family:"Spline Sans Mono",monospace;font-size:13px}
 input[type=range]{width:100%;accent-color:var(--acc)}
 .field+.field,.row+.field,.field+.row,.stack+.row{margin-top:10px}
+.mt{margin-top:10px}
 .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .hint{font-size:12px;color:var(--mut);margin:8px 0 0}
 .stack{display:flex;flex-direction:column;gap:10px}
@@ -52,17 +53,17 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
 
 <header>
   <h1>Arado</h1>
-  <p>Traza una guía y haz que un peine de líneas paralelas la siga. Exporta en capas.</p>
+  <p>Traza una guía y haz que una pasada de surcos paralelos la siga. Exporta en capas.</p>
 </header>
 
 <div class="app">
   <main>
     <div class="bar">
       <div class="seg" role="group" aria-label="Herramienta">
-        <button data-mode="move" aria-pressed="true" title="Mover nodos y peines (V)">Mover</button>
+        <button data-mode="move" aria-pressed="true" title="Mover nodos y pasadas (V)">Mover</button>
         <button data-mode="add" aria-pressed="false" title="Añadir nodos a la guía (A)">Añadir</button>
       </div>
-      <button id="newP" title="Empezar un peine nuevo (P)">Nuevo peine</button>
+      <button id="newP" title="Empezar una pasada nueva (P)">Nueva pasada</button>
       <div class="seg" role="group" aria-label="Historial">
         <button id="undo" title="Deshacer (Ctrl+Z)">Deshacer</button>
         <button id="redo" title="Rehacer (Ctrl+Mayús+Z)">Rehacer</button>
@@ -74,23 +75,44 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
 
   <aside>
     <section>
-      <h2>Peine seleccionado</h2>
-      <p class="none" id="nosel">Pulsa un peine para editarlo, o usa «Nuevo peine» y haz clic en el lienzo para trazar su guía.</p>
+      <h2>Pasada seleccionada</h2>
+      <p class="none" id="nosel">Pulsa una pasada para editarla, o usa «Nueva pasada» y haz clic en el lienzo para trazar su guía.</p>
       <div id="pbox" hidden>
         <div class="stack">
-          <div class="sl"><span>Púas</span><input type="number" id="pnn" step="1" min="1"><input type="range" id="pn"></div>
+          <div class="sl"><span>Surcos</span><input type="number" id="pnn" step="1" min="1"><input type="range" id="pn"></div>
           <div class="sl"><span>Separación (mm)</span><input type="number" id="psn" step="0.1" min="0.1"><input type="range" id="ps"></div>
           <div class="sl"><span>Grosor (mm)</span><input type="number" id="pwn" step="0.05" min="0.05"><input type="range" id="pw"></div>
         </div>
         <div class="row field">
-          <label>Remate<select id="pcap"><option value="butt">Recto</option><option value="round">Redondo</option><option value="square">Cuadrado</option></select></label>
+          <label>Terminación<select id="pcap"><option value="butt">Recta</option><option value="round">Redonda</option><option value="square">Cuadrada</option></select></label>
           <label>Esquinas<select id="pmode"><option value="conc">Concéntricas</option><option value="igual">Mismo radio</option></select></label>
         </div>
         <p class="hint" id="pinfo"></p>
         <div class="btns">
           <button id="pdup">Duplicar</button>
-          <button id="pdel" class="danger">Eliminar peine</button>
+          <button id="pdel" class="danger">Eliminar pasada</button>
         </div>
+
+        <h3>Extremos</h3>
+        <div class="seg" role="group" aria-label="Extremo"><button data-end="ini" aria-pressed="true" title="El extremo del nodo redondo">Inicio</button><button data-end="fin" aria-pressed="false">Fin</button></div>
+        <div class="row mt">
+          <label>Perfil<select id="eperf"><option value="recto">Recto</option><option value="diagonal">Diagonal</option><option value="punta">Punta</option><option value="curva">Curva</option><option value="ondas">Ondas</option></select></label>
+          <label class="inline" style="align-self:end;padding-bottom:6px"><input type="checkbox" id="einv">Invertir</label>
+        </div>
+        <div class="stack mt">
+          <div class="sl"><span>Escalonado (mm)</span><input type="number" id="ean" step="0.5" min="0"><input type="range" id="ea"></div>
+          <div class="sl" id="eorow"><span>Ondas</span><input type="number" id="eon" step="0.5" min="0.5"><input type="range" id="eo"></div>
+          <div class="sl"><span>Variación al azar (%)</span><input type="number" id="evn" step="1" min="0" max="100"><input type="range" id="ev"></div>
+        </div>
+        <div class="btns"><button id="eseed" title="Otra tirada del azar">Otra variación</button><button id="ecopy">Copiar al otro extremo</button></div>
+        <div class="row mt">
+          <label>Remate<select id="edeco"><option value="nada">Nada</option><option value="punto">Puntos</option><option value="guion">Guiones</option></select></label>
+        </div>
+        <div class="stack mt" id="edbox">
+          <div class="sl"><span>Hueco (mm)</span><input type="number" id="ehn" step="0.1" min="0"><input type="range" id="eh"></div>
+          <div class="sl"><span>Cantidad</span><input type="number" id="ecn" step="1" min="1" max="9"><input type="range" id="ec"></div>
+        </div>
+        <p class="hint">El escalonado recorta cada surco desde su extremo según el perfil. Con perfil recto y variación, los cortes salen al azar. El inicio es el nodo redondo de la guía.</p>
 
         <h3>Nodo seleccionado</h3>
         <p class="none" id="nonode">Pulsa un nodo de la guía. Arrastra el punto azul de una esquina para cambiar su radio.</p>
@@ -141,12 +163,12 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
 </div>
 
 <script>
-/* Arado · geometría del peine
+/* Arado · geometría de la pasada
  * Una guía es una polilínea con las esquinas redondeadas por un arco (radio
- * por nodo). Cada púa es una paralela a la guía a una distancia fija.
+ * por nodo). Cada surco es una paralela a la guía a una distancia fija.
  * - Concéntricas: la paralela de un arco es otro arco con el mismo centro;
- *   si el radio llega a cero o menos, la púa hace esquina viva.
- * - Mismo radio: cada púa es una polilínea paralela redondeada con el mismo
+ *   si el radio llega a cero o menos, el surco hace esquina viva.
+ * - Mismo radio: cada surco es una polilínea paralela redondeada con el mismo
  *   radio que la guía.
  * Todo sale en rectas y arcos exactos (comandos L y A de SVG).
  */
@@ -214,19 +236,20 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         var u2 = segs[i + 1].u, n2 = [-u2[1], u2[0]];
         var s = (nr[0] * u2[0] + nr[1] * u2[1]) >= 0 ? 1 : -1; // lado del centro
         var r = c.tn > 1e-9 ? c.t / c.tn : 0;
-        els.push({ k: 'A', r: r, s: s, sw: c.cr > 0 ? 1 : 0, a: B, b: add(P[i + 1], mul(u2, c.t)),
+        els.push({ k: 'A', r: r, s: s, sw: c.cr > 0 ? 1 : 0, a: B, b: add(P[i + 1], mul(u2, c.t)), c: add(B, mul(nr, r * s)),
           n1: nr, n2: n2, v: P[i + 1], vi: i + 1, phi: c.phi });
       }
     }
     return els;
   }
 
-  // paralela a distancia d (hacia la normal n de cada tramo) como trazado SVG
-  function offsetD(els, d) {
+  // paralela a distancia d (hacia la normal n de cada tramo): lista de tramos
+  // {k:'L',a,b} o {k:'A',a,b,c,r,sw}, cada uno con su punto inicial y final
+  function offsetSegs(els, d) {
     var it = els.map(function (e) {
       if (e.k === 'L') return { k: 'L', a: add(e.a, mul(e.n, d)), b: add(e.b, mul(e.n, d)), u: e.u };
       var r = e.r - e.s * d;
-      if (r > 1e-6) return { k: 'A', r: r, sw: e.sw, b: add(e.b, mul(e.n2, d)) };
+      if (r > 1e-6) return { k: 'A', r: r, sw: e.sw, c: e.c, a: add(e.a, mul(e.n1, d)), b: add(e.b, mul(e.n2, d)) };
       return { k: 'X' };
     });
     var i, fold = false;
@@ -235,14 +258,89 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
       var p = it[i - 1], q = it[i + 1], X = cross(p.a, p.u, q.a, q.u);
       if (X) { p.b = X; q.a = X; }
     }
-    var out = ['M' + fmt(it[0].a[0]) + ' ' + fmt(it[0].a[1])];
-    it.forEach(function (e) {
-      if (e.k === 'L') {
-        if ((e.b[0] - e.a[0]) * e.u[0] + (e.b[1] - e.a[1]) * e.u[1] < -1e-6) fold = true;
-        out.push('L' + fmt(e.b[0]) + ' ' + fmt(e.b[1]));
-      } else if (e.k === 'A') out.push('A' + fmt(e.r) + ' ' + fmt(e.r) + ' 0 0 ' + e.sw + ' ' + fmt(e.b[0]) + ' ' + fmt(e.b[1]));
+    var segs = it.filter(function (e) { return e.k !== 'X'; });
+    segs.forEach(function (e) {
+      if (e.k === 'L' && (e.b[0] - e.a[0]) * e.u[0] + (e.b[1] - e.a[1]) * e.u[1] < -1e-6) fold = true;
     });
-    return { d: out.join(''), fold: fold };
+    return { segs: segs, fold: fold };
+  }
+
+  /* ---- longitudes y recortes (fase 2: extremos escalonados) ---- */
+  var TAU = Math.PI * 2;
+  function normAng(a) { a = a % TAU; return a < 0 ? a + TAU : a; }
+  function arcSpan(e) {
+    var t0 = Math.atan2(e.a[1] - e.c[1], e.a[0] - e.c[0]), t1 = Math.atan2(e.b[1] - e.c[1], e.b[0] - e.c[0]);
+    return { t0: t0, span: e.sw ? normAng(t1 - t0) : normAng(t0 - t1) };
+  }
+  function segLen(e) {
+    if (e.k === 'L') return Math.sqrt((e.b[0] - e.a[0]) * (e.b[0] - e.a[0]) + (e.b[1] - e.a[1]) * (e.b[1] - e.a[1]));
+    return e.r * arcSpan(e).span;
+  }
+  // punto a la fracción f del tramo
+  function segAt(e, f) {
+    if (e.k === 'L') return [e.a[0] + (e.b[0] - e.a[0]) * f, e.a[1] + (e.b[1] - e.a[1]) * f];
+    var s = arcSpan(e), t = s.t0 + (e.sw ? 1 : -1) * s.span * f;
+    return [e.c[0] + e.r * Math.cos(t), e.c[1] + e.r * Math.sin(t)];
+  }
+  // dirección de avance en el punto p del tramo
+  function segDir(e, p) {
+    if (e.k === 'L') { var dx = e.b[0] - e.a[0], dy = e.b[1] - e.a[1], l = Math.sqrt(dx * dx + dy * dy) || 1; return [dx / l, dy / l]; }
+    var rx = (p[0] - e.c[0]) / e.r, ry = (p[1] - e.c[1]) / e.r;
+    return e.sw ? [-ry, rx] : [ry, -rx];
+  }
+  function copySeg(e, a, b) { var o = { k: e.k, a: a, b: b }; if (e.k === 'A') { o.c = e.c; o.r = e.r; o.sw = e.sw; } return o; }
+  // quita t0 del principio y t1 del final; null si no queda nada
+  function trim(segs, t0, t1) {
+    var L = segs.map(segLen), tot = 0, i;
+    L.forEach(function (x) { tot += x; });
+    if (t0 + t1 >= tot - 1e-6) return null;
+    var out = [], pos = 0, from = t0, to = tot - t1;
+    for (i = 0; i < segs.length; i++) {
+      var e = segs[i], s0 = pos, s1 = pos + L[i]; pos = s1;
+      if (s1 <= from || s0 >= to || L[i] < 1e-9) continue;
+      var fa = Math.max(0, (from - s0) / L[i]), fb = Math.min(1, (to - s0) / L[i]);
+      out.push(copySeg(e, fa > 0 ? segAt(e, fa) : e.a, fb < 1 ? segAt(e, fb) : e.b));
+    }
+    return out.length ? out : null;
+  }
+  function toD(segs) {
+    var out = ['M' + fmt(segs[0].a[0]) + ' ' + fmt(segs[0].a[1])];
+    segs.forEach(function (e) {
+      if (e.k === 'L') out.push('L' + fmt(e.b[0]) + ' ' + fmt(e.b[1]));
+      else out.push('A' + fmt(e.r) + ' ' + fmt(e.r) + ' 0 ' + (arcSpan(e).span > Math.PI ? 1 : 0) + ' ' + e.sw + ' ' + fmt(e.b[0]) + ' ' + fmt(e.b[1]));
+    });
+    return out.join('');
+  }
+
+  // azar repetible: el mismo surco con la misma semilla da siempre lo mismo
+  function rnd(seed, k) { var x = Math.sin(seed * 12.9898 + k * 78.233 + 0.5) * 43758.5453; return x - Math.floor(x); }
+  // cuánto se recorta (0..1) el surco en la posición u (0 = primero, 1 = último)
+  function profile(x, u, k) {
+    var f;
+    switch (x.perfil) {
+      case 'diagonal': f = u; break;
+      case 'punta': f = Math.abs(2 * u - 1); break;
+      case 'curva': f = (2 * u - 1) * (2 * u - 1); break;
+      case 'ondas': f = (1 - Math.cos(TAU * Math.max(0.5, x.ondas || 1) * u)) / 2; break;
+      default: f = 0;
+    }
+    if (x.inv) f = 1 - f;
+    var v = Math.max(0, Math.min(1, (x.vari || 0) / 100));
+    return f * (1 - v) + v * rnd(x.seed || 1, k);
+  }
+  // remates más allá del extremo p, en la dirección o
+  function decos(x, p, o, w, res) {
+    if (!x.deco || x.deco === 'nada') return;
+    var gap = Math.max(0, x.hueco || 0), n = Math.max(1, Math.min(9, Math.round(x.cant || 1))), i;
+    for (i = 0; i < n; i++) {
+      if (x.deco === 'punto') {
+        var s = gap + w / 2 + i * (w + gap);
+        res.dots.push([p[0] + o[0] * s, p[1] + o[1] * s, w / 2]);
+      } else {
+        var dl = 3 * w, s0 = gap + i * (dl + gap), s1 = s0 + dl;
+        res.dashes.push('M' + fmt(p[0] + o[0] * s0) + ' ' + fmt(p[1] + o[1] * s0) + 'L' + fmt(p[0] + o[0] * s1) + ' ' + fmt(p[1] + o[1] * s1));
+      }
+    }
   }
 
   // polilínea paralela con esquinas vivas (para «Mismo radio»)
@@ -262,23 +360,30 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     return Q;
   }
 
-  // pe: {nodes:[{x,y,r}], n, sep, mode}
+  // pe: {nodes:[{x,y,r}], n, sep, w, mode, ext:{ini, fin}}
+  // ext.*: {perfil, inv, amp, ondas, vari, seed, deco, hueco, cant}
   function build(pe) {
-    var c = clean(pe.nodes), res = { paths: [], fold: false, spine: [], ix: c.ix };
+    var c = clean(pe.nodes), res = { paths: [], dots: [], dashes: [], fold: false, spine: [], ix: c.ix };
     if (c.P.length < 2) return res;
     res.spine = fillet(c.P, c.R);
-    var n = Math.max(1, Math.round(pe.n)), k;
+    var n = Math.max(1, Math.round(pe.n)), k, ext = pe.ext || {}, xi = ext.ini || {}, xf = ext.fin || {};
     for (k = 0; k < n; k++) {
       var d = (k - (n - 1) / 2) * pe.sep, o;
       if (pe.mode === 'igual') {
         var Q = offsetPoly(c.P, d), j;
-        o = offsetD(fillet(Q, c.R), 0);
-        // un tramo paralelo que va al revés que el de la guía: la púa se pliega
+        o = offsetSegs(fillet(Q, c.R), 0);
+        // un tramo paralelo que va al revés que el de la guía: el surco se pliega
         for (j = 0; j < Q.length - 1; j++)
           if ((Q[j + 1][0] - Q[j][0]) * (c.P[j + 1][0] - c.P[j][0]) + (Q[j + 1][1] - Q[j][1]) * (c.P[j + 1][1] - c.P[j][1]) < 0) o.fold = true;
-      } else o = offsetD(res.spine, d);
-      res.paths.push(o.d);
+      } else o = offsetSegs(res.spine, d);
       if (o.fold) res.fold = true;
+      var u = n > 1 ? k / (n - 1) : 0.5;
+      var sg = trim(o.segs, Math.max(0, xi.amp || 0) * profile(xi, u, k), Math.max(0, xf.amp || 0) * profile(xf, u, k + 1000));
+      if (!sg) continue;
+      res.paths.push(toD(sg));
+      var a = sg[0], z = sg[sg.length - 1], da = segDir(a, a.a), dz = segDir(z, z.b);
+      decos(xi, a.a, [-da[0], -da[1]], pe.w, res);
+      decos(xf, z.b, dz, pe.w, res);
     }
     return res;
   }
@@ -302,7 +407,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     return out;
   }
   function pad(i) { return (i < 9 ? '0' : '') + (i + 1); }
-  // o: {W,H,mmW,mmH,cols,show,peines:[{paths,w,cap}]}
+  // o: {W,H,mmW,mmH,cols,show,pasadas:[{paths,dots,dashes,w,cap}]}
   function build(o) {
     var k = o.mmW / o.W, s = o.show || {}, g = [];
     if (s.paper) g.push('<g id="fondo"><rect id="papel" width="' + n(o.W) + '" height="' + n(o.H) + '" fill="' + PAPER + '"/></g>');
@@ -311,11 +416,15 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         return '<line x1="' + n(l[0]) + '" y1="' + n(l[1]) + '" x2="' + n(l[2]) + '" y2="' + n(l[3]) + '"/>';
       }).join('') + '</g>');
     }
-    o.peines.forEach(function (pe, i) {
+    o.pasadas.forEach(function (pe, i) {
       if (!pe.paths.length) return;
-      var id = 'peine-' + (i + 1);
+      var id = 'pasada-' + (i + 1);
       g.push('<g id="' + id + '" fill="none" stroke="' + INK + '" stroke-width="' + n(pe.w) + '" stroke-linecap="' + pe.cap + '" stroke-linejoin="miter" stroke-miterlimit="10">' +
-        pe.paths.map(function (d, j) { return '<path id="' + id + '-pua-' + pad(j) + '" d="' + d + '"/>'; }).join('') + '</g>');
+        pe.paths.map(function (d, j) { return '<path id="' + id + '-surco-' + pad(j) + '" d="' + d + '"/>'; }).join('') +
+        (pe.dots.length || pe.dashes.length ? '<g id="' + id + '-remates">' +
+          pe.dashes.map(function (d) { return '<path d="' + d + '"/>'; }).join('') +
+          pe.dots.map(function (q) { return '<circle cx="' + n(q[0]) + '" cy="' + n(q[1]) + '" r="' + n(q[2]) + '" fill="' + INK + '" stroke="none"/>'; }).join('') +
+          '</g>' : '') + '</g>');
     });
     return '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<svg xmlns="http://www.w3.org/2000/svg" width="' + n(o.mmW) + 'mm" height="' + n(o.mmH) + 'mm" viewBox="0 0 ' + n(o.W) + ' ' + n(o.H) + '">\n' +
@@ -338,17 +447,20 @@ var FORMATS=[
 var GUIDE='#2B4BFF';
 var S, hist=[], redo=[], mode='move', selP=-1, selN=-1, hover=null, drag=null, built=[], raf=0, saveT=0;
 
-function defaults(){return {fmt:'a4v',cols:12,snap:true,peines:[],show:{paper:true,grid:true,guides:true}}}
+function defaults(){return {fmt:'a4v',cols:12,snap:true,pasadas:[],show:{paper:true,grid:true,guides:true}}}
 var fresh=true;
 function load(){
   var d=defaults();
   try{var j=JSON.parse(localStorage.getItem(KEY)||'null');
-    if(j&&Array.isArray(j.peines)&&FORMATS.some(function(f){return f.id===j.fmt})){
-      fresh=false;d.fmt=j.fmt;d.cols=+j.cols||12;d.snap=!!j.snap;d.peines=j.peines;
+    if(j&&Array.isArray(j.pasadas)&&FORMATS.some(function(f){return f.id===j.fmt})){
+      fresh=false;d.fmt=j.fmt;d.cols=+j.cols||12;d.snap=!!j.snap;d.pasadas=j.pasadas;d.pasadas.forEach(fixExt);
       if(j.show)['paper','grid','guides'].forEach(function(k){if(k in j.show)d.show[k]=!!j.show[k]});
     }}catch(e){}
   return d;
 }
+// extremos por defecto: rectos, sin remates
+function defExt(){return {perfil:'recto',inv:false,amp:30,ondas:2,vari:0,seed:1,deco:'nada',hueco:4,cant:1}}
+function fixExt(pe){if(!pe.ext)pe.ext={};['ini','fin'].forEach(function(k){var d=defExt(),x=pe.ext[k]||{};for(var q in d)if(!(q in x))x[q]=d[q];pe.ext[k]=x})}
 S=load();
 
 function fm(){return FORMATS.filter(function(f){return f.id===S.fmt})[0]}
@@ -363,12 +475,12 @@ var scale=1, dpr=1;
 /* ---------- cálculo ---------- */
 function half(pe){return (Math.max(1,pe.n)-1)/2*pe.sep}
 function compute(){
-  built=S.peines.map(function(pe){return AR.build(pe)});
+  built=S.pasadas.map(function(pe){return AR.build(pe)});
   var st=$('status'), np=0, folds=[];
   built.forEach(function(b,i){np+=b.paths.length;if(b.fold)folds.push(i+1)});
-  if(!S.peines.length){st.textContent='Sin peines. Pulsa «Nuevo peine» y haz clic en el lienzo para trazar la guía.';st.className='status mono'}
-  else if(folds.length){st.textContent='Peine '+folds.join(', ')+': las púas interiores se pliegan en una esquina. Separa los nodos o estrecha el peine.';st.className='status mono warn'}
-  else{st.textContent=S.peines.length+' peine'+(S.peines.length===1?'':'s')+' · '+np+' púa'+(np===1?'':'s');st.className='status mono'}
+  if(!S.pasadas.length){st.textContent='Sin pasadas. Pulsa «Nueva pasada» y haz clic en el lienzo para trazar la guía.';st.className='status mono'}
+  else if(folds.length){st.textContent='Pasada '+folds.join(', ')+': los surcos interiores se pliegan en una esquina. Separa los nodos o estrecha la pasada.';st.className='status mono warn'}
+  else{st.textContent=S.pasadas.length+' pasada'+(S.pasadas.length===1?'':'s')+' · '+np+' surco'+(np===1?'':'s');st.className='status mono'}
 }
 
 /* ---------- dibujo ---------- */
@@ -383,7 +495,7 @@ function resize(){
   draw();
 }
 function opts(){var f=fm();return {W:W,H:H(),mmW:f.w,mmH:f.h,cols:S.cols,show:S.show,
-  peines:S.peines.map(function(pe,i){return {paths:built[i]?built[i].paths:[],w:pe.w,cap:pe.cap}})}}
+  pasadas:S.pasadas.map(function(pe,i){var b=built[i]||{paths:[],dots:[],dashes:[]};return {paths:b.paths,dots:b.dots,dashes:b.dashes,w:pe.w,cap:pe.cap}})}}
 function draw(){raf=0;paint(ctx,dpr*scale,false,false)}
 // ex: exportación (solo el papel)
 function paint(c,sc,ex,transp){
@@ -393,7 +505,8 @@ function paint(c,sc,ex,transp){
   if(!transp&&(sh.paper||!ex)){c.fillStyle=TGXPaper(sh.paper);c.fillRect(ex?0:-PB,ex?0:-PB,ex?W:W+2*PB,ex?HH:HH+2*PB)}
   if(sh.grid){c.strokeStyle=AX.GRID;c.lineWidth=ex?0.12/K():px;c.beginPath();AX.gridLines(o).forEach(function(l){c.moveTo(l[0],l[1]);c.lineTo(l[2],l[3])});c.stroke()}
   c.strokeStyle=AX.INK; c.lineJoin='miter'; c.miterLimit=10;
-  o.peines.forEach(function(pe){c.lineWidth=pe.w;c.lineCap=pe.cap;pe.paths.forEach(function(d){c.stroke(new Path2D(d))})});
+  o.pasadas.forEach(function(pe){c.lineWidth=pe.w;c.lineCap=pe.cap;pe.paths.concat(pe.dashes).forEach(function(d){c.stroke(new Path2D(d))});
+    c.fillStyle=AX.INK;pe.dots.forEach(function(q){c.beginPath();c.arc(q[0],q[1],q[2],0,Math.PI*2);c.fill()})});
   if(ex)return;
   // mesa: velo sobre lo que queda fuera del papel
   var st=getComputedStyle(document.documentElement);
@@ -411,7 +524,7 @@ function handlePos(e,px){
 function bisector(e){var x=(e.n1[0]+e.n2[0])*e.s,y=(e.n1[1]+e.n2[1])*e.s,l=Math.hypot(x,y)||1;return [x/l,y/l]}
 function drawGuides(c,px){
   c.lineCap='butt';
-  S.peines.forEach(function(pe,i){
+  S.pasadas.forEach(function(pe,i){
     var on=i===selP, b=built[i], hv=hover&&hover.p===i;
     c.strokeStyle=GUIDE; c.fillStyle=GUIDE;
     c.globalAlpha=on?1:(hv?.8:.45);
@@ -434,7 +547,9 @@ function drawGuides(c,px){
     pe.nodes.forEach(function(nd,j){
       var s=(on&&j===selN?6:4)*px, isH=hover&&hover.p===i&&hover.n===j;
       c.fillStyle=(on&&j===selN)?GUIDE:'#fff';c.lineWidth=1.4*px;
-      c.fillRect(nd.x-s,nd.y-s,2*s,2*s);c.strokeRect(nd.x-s,nd.y-s,2*s,2*s);
+      // el primer nodo (inicio) es redondo
+      if(j===0){c.beginPath();c.arc(nd.x,nd.y,s*1.15,0,Math.PI*2);c.fill();c.stroke()}
+      else{c.fillRect(nd.x-s,nd.y-s,2*s,2*s);c.strokeRect(nd.x-s,nd.y-s,2*s,2*s)}
       if(isH){c.strokeRect(nd.x-s-2*px,nd.y-s-2*px,2*s+4*px,2*s+4*px)}
       c.fillStyle=GUIDE;
     });
@@ -449,13 +564,13 @@ function redraw(){if(!raf)raf=requestAnimationFrame(draw)}
 /* ---------- estado / historial ---------- */
 function snapshot(){return JSON.stringify(S)}
 function pushHist(){hist.push(snapshot());if(hist.length>120)hist.shift();redo.length=0;updHist()}
-function restore(js){S=JSON.parse(js);if(!S.peines[selP]){selP=-1;selN=-1}else if(!S.peines[selP].nodes[selN])selN=-1;syncAll()}
+function restore(js){S=JSON.parse(js);if(!S.pasadas[selP]){selP=-1;selN=-1}else if(!S.pasadas[selP].nodes[selN])selN=-1;syncAll()}
 function updHist(){$('undo').disabled=!hist.length;$('redo').disabled=!redo.length}
 function save(){clearTimeout(saveT);saveT=setTimeout(function(){try{localStorage.setItem(KEY,snapshot())}catch(e){}},300)}
 function changed(){compute();syncPanel();redraw();save()}
 function layersInfo(){
-  var l=[];if(S.show.paper)l.push('fondo');if(S.show.grid)l.push('rejilla');l.push('peine-1, peine-2…');
-  $('exinfo').textContent='Capas del SVG: '+l.join(', ')+'. Cada púa es un trazo abierto con su grosor, editable.';
+  var l=[];if(S.show.paper)l.push('fondo');if(S.show.grid)l.push('rejilla');l.push('pasada-1, pasada-2…');
+  $('exinfo').textContent='Capas del SVG: '+l.join(', ')+'. Cada surco es un trazo abierto con su grosor, editable.';
 }
 function syncAll(){
   $('fmt').value=S.fmt;$('cols').value=S.cols;$('snap').checked=S.snap;
@@ -463,12 +578,18 @@ function syncAll(){
   updHist();layersInfo();resize();changed();
 }
 function syncPanel(){
-  var k=K(), pe=S.peines[selP];
+  var k=K(), pe=S.pasadas[selP];
   $('pbox').hidden=!pe;$('nosel').hidden=!!pe;
   if(!pe)return;
   cfg('pn',1,80,1,pe.n,1);cfg('ps',0.2,30,0.1,pe.sep*k);cfg('pw',0.05,20,0.05,pe.w*k);
   $('pcap').value=pe.cap;$('pmode').value=pe.mode;
-  $('pinfo').textContent='Ancho total: '+(Math.round(((Math.max(1,pe.n)-1)*pe.sep+pe.w)*k*10)/10)+' mm · '+pe.nodes.length+' nodo'+(pe.nodes.length===1?'':'s')+(pe.nodes.length<2?' (añade otro para ver las púas)':'');
+  var x=pe.ext[endK];
+  document.querySelectorAll('[data-end]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.end===endK)});
+  $('eperf').value=x.perfil;$('einv').checked=!!x.inv;$('edeco').value=x.deco;
+  cfg('ea',0,150,0.5,x.amp*k);cfg('eo',0.5,12,0.5,x.ondas);cfg('ev',0,100,1,x.vari,1);
+  cfg('eh',0,20,0.1,x.hueco*k);cfg('ec',1,9,1,x.cant,1);
+  $('eorow').hidden=x.perfil!=='ondas';$('edbox').hidden=x.deco==='nada';$('eseed').disabled=!x.vari;
+  $('pinfo').textContent='Ancho total: '+(Math.round(((Math.max(1,pe.n)-1)*pe.sep+pe.w)*k*10)/10)+' mm · '+pe.nodes.length+' nodo'+(pe.nodes.length===1?'':'s')+(pe.nodes.length<2?' (añade otro para ver los surcos)':'');
   var nd=pe.nodes[selN];$('nbox').hidden=!nd;$('nonode').hidden=!!nd;
   if(nd){
     cfg('nx',-PB*k,(W+PB)*k,0.1,nd.x*k);cfg('ny',-PB*k,(H()+PB)*k,0.1,nd.y*k);cfg('nr',0,W*k/2,0.1,(nd.r||0)*k);
@@ -485,9 +606,9 @@ function clampPt(p){return {x:Math.max(-PB,Math.min(W+PB,p.x)),y:Math.max(-PB,Ma
 function px(){return 1/scale}
 function hitNode(p){
   var best=null,bd=8*px();
-  // primero el peine seleccionado, luego de arriba abajo
-  var order=S.peines.map(function(_,i){return i}).reverse();if(selP>=0){order.splice(order.indexOf(selP),1);order.unshift(selP)}
-  order.forEach(function(i){S.peines[i].nodes.forEach(function(nd,j){var d=Math.hypot(p.x-nd.x,p.y-nd.y);if(d<bd){bd=d;best={p:i,n:j}}})});
+  // primero la pasada seleccionada, luego de arriba abajo
+  var order=S.pasadas.map(function(_,i){return i}).reverse();if(selP>=0){order.splice(order.indexOf(selP),1);order.unshift(selP)}
+  order.forEach(function(i){S.pasadas[i].nodes.forEach(function(nd,j){var d=Math.hypot(p.x-nd.x,p.y-nd.y);if(d<bd){bd=d;best={p:i,n:j}}})});
   return best;
 }
 function hitHandle(p){
@@ -498,17 +619,18 @@ function hitHandle(p){
 }
 function segDist(p,a,b){var dx=b.x-a.x,dy=b.y-a.y,l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/l)):0;
   return {d:Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy),x:a.x+t*dx,y:a.y+t*dy}}
-// tramo de guía más cercano dentro de tol (+ medio ancho del peine si wide)
+// tramo de guía más cercano dentro de tol (+ medio ancho de la pasada si wide)
 function hitSeg(p,wide){
   var best=null;
-  for(var i=S.peines.length-1;i>=0;i--){var pe=S.peines[i],tol=(wide?half(pe)+pe.w/2:0)+6*px();
+  for(var i=S.pasadas.length-1;i>=0;i--){var pe=S.pasadas[i],tol=(wide?half(pe)+pe.w/2:0)+6*px();
     for(var j=0;j<pe.nodes.length-1;j++){var r=segDist(p,pe.nodes[j],pe.nodes[j+1]);if(r.d<=tol&&(!best||r.d<best.d))best={p:i,s:j,d:r.d,x:r.x,y:r.y}}}
   return best;
 }
-function newPeine(nd){
-  var t=S.peines[selP]||S.peines[S.peines.length-1];
-  var k=K(),pe=t?{n:t.n,sep:t.sep,w:t.w,cap:t.cap,mode:t.mode,nodes:[]}:{n:12,sep:5/k,w:2.5/k,cap:'butt',mode:'conc',nodes:[]};
-  pe.nodes.push(nd);S.peines.push(pe);return S.peines.length-1;
+function newPasada(nd){
+  var t=S.pasadas[selP]||S.pasadas[S.pasadas.length-1];
+  var k=K(),pe=t?{n:t.n,sep:t.sep,w:t.w,cap:t.cap,mode:t.mode,ext:JSON.parse(JSON.stringify(t.ext)),nodes:[]}:{n:12,sep:5/k,w:2.5/k,cap:'butt',mode:'conc',nodes:[]};
+  fixExt(pe);
+  pe.nodes.push(nd);S.pasadas.push(pe);return S.pasadas.length-1;
 }
 function defR(pe){return snapR(half(pe)+cell())}
 
@@ -517,10 +639,10 @@ cv.addEventListener('pointerdown',function(e){
   if(mode==='add'){
     if(hn){selP=hn.p;selN=hn.n;syncPanel();redraw();return}
     var hs=hitSeg(p,false);
-    if(hs){pushHist();var pe=S.peines[hs.p],q=snapPt({x:hs.x,y:hs.y});pe.nodes.splice(hs.s+1,0,{x:q.x,y:q.y,r:defR(pe)});selP=hs.p;selN=hs.s+1;changed();return}
+    if(hs){pushHist();var pe=S.pasadas[hs.p],q=snapPt({x:hs.x,y:hs.y});pe.nodes.splice(hs.s+1,0,{x:q.x,y:q.y,r:defR(pe)});selP=hs.p;selN=hs.s+1;changed();return}
     pushHist();var q2=clampPt(snapPt(p));
-    var pe2=S.peines[selP];
-    if(!pe2){selP=newPeine({x:q2.x,y:q2.y,r:0});selN=0}
+    var pe2=S.pasadas[selP];
+    if(!pe2){selP=newPasada({x:q2.x,y:q2.y,r:0});selN=0}
     else{var nd={x:q2.x,y:q2.y,r:0};
       if(selN===0&&pe2.nodes.length>1){pe2.nodes[0].r=pe2.nodes[0].r||defR(pe2);pe2.nodes.unshift(nd);selN=0}
       else{var last=pe2.nodes[pe2.nodes.length-1];if(pe2.nodes.length>1&&!last.r)last.r=defR(pe2);pe2.nodes.push(nd);selN=pe2.nodes.length-1}}
@@ -528,9 +650,9 @@ cv.addEventListener('pointerdown',function(e){
   }
   var hh=hitHandle(p);
   if(hh>=0){selN=hh;drag={t:'r',n:hh,pushed:false};cv.setPointerCapture(e.pointerId);syncPanel();redraw();return}
-  if(hn){selP=hn.p;selN=hn.n;var nd2=S.peines[selP].nodes[selN];drag={t:'n',dx:p.x-nd2.x,dy:p.y-nd2.y,pushed:false};cv.setPointerCapture(e.pointerId);syncPanel();redraw();return}
+  if(hn){selP=hn.p;selN=hn.n;var nd2=S.pasadas[selP].nodes[selN];drag={t:'n',dx:p.x-nd2.x,dy:p.y-nd2.y,pushed:false};cv.setPointerCapture(e.pointerId);syncPanel();redraw();return}
   var hb=hitSeg(p,true);
-  if(hb){selP=hb.p;selN=-1;drag={t:'p',x0:p.x,y0:p.y,orig:JSON.stringify(S.peines[hb.p].nodes),pushed:false};cv.setPointerCapture(e.pointerId);syncPanel();redraw();return}
+  if(hb){selP=hb.p;selN=-1;drag={t:'p',x0:p.x,y0:p.y,orig:JSON.stringify(S.pasadas[hb.p].nodes),pushed:false};cv.setPointerCapture(e.pointerId);syncPanel();redraw();return}
   selP=-1;selN=-1;syncPanel();redraw();
 });
 cv.addEventListener('pointermove',function(e){
@@ -541,7 +663,7 @@ cv.addEventListener('pointermove',function(e){
     cv.style.cursor=mode==='add'?(h?'pointer':(hb?'copy':'crosshair')):(hitHandle(p)>=0?'move':(h?'grab':(hb?'grab':'default')));
     return;
   }
-  var pe=S.peines[selP];if(!pe)return;
+  var pe=S.pasadas[selP];if(!pe)return;
   if(!drag.pushed){if(drag.t==='p'){hist.push(snapshot());if(hist.length>120)hist.shift();redo.length=0;updHist()}else pushHist();drag.pushed=true}
   if(drag.t==='n'){var nd=pe.nodes[selN],q=clampPt(snapPt({x:p.x-drag.dx,y:p.y-drag.dy}));nd.x=q.x;nd.y=q.y}
   else if(drag.t==='r'){
@@ -564,16 +686,16 @@ function startNew(){selP=-1;selN=-1;setMode('add');syncPanel();$('status').textC
 $('newP').addEventListener('click',startNew);
 
 function delNode(){
-  var pe=S.peines[selP];if(!pe||selN<0)return;pushHist();
-  pe.nodes.splice(selN,1);if(!pe.nodes.length){S.peines.splice(selP,1);selP=-1}
+  var pe=S.pasadas[selP];if(!pe||selN<0)return;pushHist();
+  pe.nodes.splice(selN,1);if(!pe.nodes.length){S.pasadas.splice(selP,1);selP=-1}
   selN=-1;changed();
 }
-function delPeine(){if(selP<0)return;pushHist();S.peines.splice(selP,1);selP=-1;selN=-1;changed()}
+function delPasada(){if(selP<0)return;pushHist();S.pasadas.splice(selP,1);selP=-1;selN=-1;changed()}
 $('ndel').addEventListener('click',delNode);
-$('pdel').addEventListener('click',delPeine);
+$('pdel').addEventListener('click',delPasada);
 $('pdup').addEventListener('click',function(){
-  var pe=S.peines[selP];if(!pe)return;pushHist();var c=cell(),cp=JSON.parse(JSON.stringify(pe));
-  cp.nodes.forEach(function(nd){nd.x+=c;nd.y+=c});S.peines.push(cp);selP=S.peines.length-1;selN=-1;changed();
+  var pe=S.pasadas[selP];if(!pe)return;pushHist();var c=cell(),cp=JSON.parse(JSON.stringify(pe));
+  cp.nodes.forEach(function(nd){nd.x+=c;nd.y+=c});S.pasadas.push(cp);selP=S.pasadas.length-1;selN=-1;changed();
 });
 $('undo').addEventListener('click',function(){if(!hist.length)return;redo.push(snapshot());restore(hist.pop())});
 $('redo').addEventListener('click',function(){if(!redo.length)return;hist.push(snapshot());restore(redo.pop())});
@@ -583,7 +705,7 @@ window.addEventListener('keydown',function(e){
   if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();$(e.shiftKey?'redo':'undo').click();return}
   if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();$('redo').click();return}
   if(e.ctrlKey||e.metaKey||e.altKey)return;
-  if(k==='delete'||k==='backspace'){e.preventDefault();if(selN>=0)delNode();else delPeine();return}
+  if(k==='delete'||k==='backspace'){e.preventDefault();if(selN>=0)delNode();else delPasada();return}
   if(k==='escape'){selP=-1;selN=-1;syncPanel();redraw();return}
   if(k==='v')setMode('move');else if(k==='a')setMode('add');else if(k==='p')startNew();else if(k==='g')$('sGuides').click();
 });
@@ -595,14 +717,28 @@ function bindSl(id,get,fn){var e=$(id),m=$(id+'n');
   e.addEventListener('input',function(){apply(parseFloat(this.value))});
   e.addEventListener('change',function(){pPushed=false});
   m.addEventListener('change',function(){apply(parseFloat(this.value),true)})}
-function curP(){return S.peines[selP]}
-function curN(){var pe=S.peines[selP];return pe&&pe.nodes[selN]}
+function curP(){return S.pasadas[selP]}
+function curN(){var pe=S.pasadas[selP];return pe&&pe.nodes[selN]}
 bindSl('pn',curP,function(pe,v){pe.n=Math.max(1,Math.min(400,Math.round(v)))});
 bindSl('ps',curP,function(pe,v){pe.sep=Math.max(0.05,v)/K()});
 bindSl('pw',curP,function(pe,v){pe.w=Math.max(0.02,v)/K()});
 bindSl('nx',curN,function(nd,v){nd.x=Math.max(-PB,Math.min(W+PB,v/K()))});
 bindSl('ny',curN,function(nd,v){nd.y=Math.max(-PB,Math.min(H()+PB,v/K()))});
 bindSl('nr',curN,function(nd,v){nd.r=Math.max(0,v/K())});
+/* extremos: se edita uno (inicio o fin) cada vez */
+var endK='ini';
+function curE(){var pe=S.pasadas[selP];return pe&&pe.ext[endK]}
+document.querySelectorAll('[data-end]').forEach(function(b){b.addEventListener('click',function(){endK=b.dataset.end;syncPanel();redraw()})});
+bindSl('ea',curE,function(x,v){x.amp=Math.max(0,v)/K()});
+bindSl('eo',curE,function(x,v){x.ondas=Math.max(0.5,v)});
+bindSl('ev',curE,function(x,v){x.vari=Math.max(0,Math.min(100,Math.round(v)))});
+bindSl('eh',curE,function(x,v){x.hueco=Math.max(0,v)/K()});
+bindSl('ec',curE,function(x,v){x.cant=Math.max(1,Math.min(9,Math.round(v)))});
+$('eperf').addEventListener('change',function(){var x=curE();if(!x)return;pushHist();x.perfil=this.value;changed()});
+$('einv').addEventListener('change',function(){var x=curE();if(!x)return;pushHist();x.inv=this.checked;changed()});
+$('edeco').addEventListener('change',function(){var x=curE();if(!x)return;pushHist();x.deco=this.value;changed()});
+$('eseed').addEventListener('click',function(){var x=curE();if(!x)return;pushHist();x.seed=(x.seed||1)+1;changed()});
+$('ecopy').addEventListener('click',function(){var pe=curP();if(!pe)return;pushHist();pe.ext[endK==='ini'?'fin':'ini']=JSON.parse(JSON.stringify(pe.ext[endK]));changed()});
 $('pcap').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.cap=this.value;changed()});
 $('pmode').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.mode=this.value;changed()});
 FORMATS.forEach(function(f){var o=document.createElement('option');o.value=f.id;o.textContent=f.label;$('fmt').appendChild(o)});
@@ -622,7 +758,7 @@ if(!(window.claude&&claude.use)){
 }else{claude.use('downloads').then(function(d){if(d){dlApi=d;$('dl').hidden=false;$('dlpng').hidden=false}}).catch(function(){})}
 $('dl').addEventListener('click',function(){
   if(!dlApi)return; var info=$('exinfo');
-  dlApi.save({filename:fname('svg'),data:svgText()}).then(function(){info.textContent='SVG guardado. Ábrelo en Illustrator o Affinity: cada peine llega como un grupo con nombre.'})
+  dlApi.save({filename:fname('svg'),data:svgText()}).then(function(){info.textContent='SVG guardado. Ábrelo en Illustrator o Affinity: cada pasada llega como un grupo con nombre.'})
   .catch(function(err){var c=err&&err.code;info.textContent=c==='declined'?'Descarga cancelada.':(c==='rate_limited'?'Espera un momento y vuelve a intentarlo.':'No se pudo descargar aquí. Usa «Copiar SVG» y guárdalo como .svg.')});
 });
 $('dlpng').addEventListener('click',function(){
@@ -643,10 +779,11 @@ $('copy').addEventListener('click',function(){
 
 /* ---------- arranque ---------- */
 function sample(){
-  // un peine que sube, gira a la derecha y vuelve a subir, como el cartel de Aalto
+  // una pasada que sube, gira a la derecha y vuelve a subir, como el cartel de Aalto
   var k=K(),c=cell(),HH=H();
-  S.peines=[{n:14,sep:4.5/k,w:2.6/k,cap:'butt',mode:'conc',nodes:[
+  S.pasadas=[{n:14,sep:4.5/k,w:2.6/k,cap:'butt',mode:'conc',nodes:[
     {x:3*c,y:HH+PB*0.7,r:0},{x:3*c,y:HH*0.55,r:3*c},{x:8*c,y:HH*0.55,r:1.5*c},{x:8*c,y:-PB*0.7,r:0}]}];
+  S.pasadas.forEach(fixExt);
 }
 if(fresh)sample();
 new ResizeObserver(function(){resize()}).observe(stage);
