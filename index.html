@@ -589,7 +589,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
       for (var i = r[0] + 1; i < r[1]; i++) { var dd = Math.abs((P[i][0] - a[0]) * dy - (P[i][1] - a[1]) * dx) / L; if (dd > mx) { mx = dd; mi = i; } }
       if (mx > tol) { keep[mi] = true; st.push([r[0], mi], [mi, r[1]]); }
     }
-    return P.filter(function (p, i) { return keep[i]; });
+    return P.filter(function (p, i) { return keep[i] || p.k; }); // p.k: esquina viva que hay que conservar
   }
   function unit(x, y) { var l = Math.sqrt(x * x + y * y) || 1; return [x / l, y / l]; }
   function toDSmooth(segs) {
@@ -602,7 +602,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     for (i = 0; i < n; i++) {
       var p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[Math.min(n - 1, i + 1)];
       var din = unit(p1[0] - p0[0], p1[1] - p0[1]), dout = unit(p2[0] - p1[0], p2[1] - p1[1]);
-      var sharp = i > 0 && i < n - 1 && din[0] * dout[0] + din[1] * dout[1] < Math.cos(35 * Math.PI / 180);
+      var sharp = i > 0 && i < n - 1 && (p1.k || din[0] * dout[0] + din[1] * dout[1] < Math.cos(35 * Math.PI / 180));
       T.push(sharp ? { i: din, o: dout } : (function (t) { return { i: t, o: t }; })(i === 0 ? dout : i === n - 1 ? din : unit(p2[0] - p0[0], p2[1] - p0[1])));
     }
     var out = [];
@@ -1021,8 +1021,19 @@ function Ij(X,Y){if(!pOn())return [X,Y];var P=S.persp,HH=H(),c=pPQ(),hz=pHorizon
 function pBounds(){var HH=H();return pOn()?{x0:-50*W,x1:51*W,y0:-50*HH,y1:5*HH}:{x0:-PB,x1:W+PB,y0:-PB,y1:HH+PB}}
 // rellena de puntos una polilínea (un tramo recto largo solo trae sus dos extremos, y la
 // perspectiva y el doblez curvan lo de en medio)
+// Con doblez, además pone un punto justo en la línea donde empieza y donde acaba la
+// curva; con radio 0 ese punto es una esquina viva (k) que el suavizado respeta.
+function foldLines(){var P=S.persp;if(!pOn()||!P.fold)return [];var yf=pFloorY(H()-(P.fd||0)),R=Math.max(0,P.fr||0)/pLam(yf);
+  return R>1e-6?[{y:yf},{y:yf-Math.PI*R/2}]:[{y:yf,k:1}]}
 function dense(P){var out=[P[0]];for(var i=0;i<P.length-1;i++){var a=P[i],b=P[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.min(600,Math.max(1,Math.ceil(l/5)));
   for(var j=1;j<=n;j++){var t=j/n;out.push(a.map(function(v,k){return v+((b[k]==null?v:b[k])-v)*t}))}}return out}
+// corta el contorno (cerrado) del surco justo en las líneas del doblez: cada borde
+// tiene su propio punto de doblez, y con radio 0 es una esquina viva
+function splitFold(R){var FL=foldLines();if(!FL.length)return R;var out=[];
+  for(var i=0;i<R.length;i++){var a=R[i],b=R[(i+1)%R.length],dy=b[1]-a[1],ts=[];out.push(a);
+    if(Math.abs(dy)>1e-9)FL.forEach(function(f){var t=(f.y-a[1])/dy;if(t>1e-6&&t<1-1e-6)ts.push({t:t,k:f.k})});
+    ts.sort(function(u,v){return u.t-v.t}).forEach(function(o){var p=[a[0]+(b[0]-a[0])*o.t,a[1]+(b[1]-a[1])*o.t];if(o.k)p.k=1;out.push(p)})}
+  return out}
 // con perspectiva, cada surco (ya cortado por los cruces) pasa a ser su contorno proyectado
 function projectBuilt(){
   if(!pOn())return;
@@ -1030,7 +1041,7 @@ function projectBuilt(){
     var cap=S.pasadas[i].cap||'butt';
     b.lines.forEach(function(L){
       var pcs=L.pieces||[{pts:L.pts,c0:false,c1:false}];
-      b.paths[L.pi]={fill:true,w:L.w,d:pcs.map(function(pc){var R=AR.ring(dense(pc.pts),L.w,cap,pc.c0,pc.c1);return R?AR.ringD(R.map(function(p){return Pj(p[0],p[1])})):''}).join('')};
+      b.paths[L.pi]={fill:true,w:L.w,d:pcs.map(function(pc){var R=AR.ring(dense(pc.pts),L.w,cap,pc.c0,pc.c1);return R?AR.ringD(splitFold(R).map(function(p){var q=Pj(p[0],p[1]);if(p.k)q.k=1;return q})):''}).join('')};
     });
     b.dots=b.dots.map(function(q){var c=Pj(q[0],q[1]);return [c[0],c[1],q[2]*pS(q[0],q[1])]});
     b.dashes=b.dashes.map(function(x){var a=Pj(x.a[0],x.a[1]),e=Pj(x.b[0],x.b[1]),m=pS((x.a[0]+x.b[0])/2,(x.a[1]+x.b[1])/2);

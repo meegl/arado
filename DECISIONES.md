@@ -203,6 +203,7 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
   - En pantalla, Y = (Y del suelo a esa profundidad) − h·λ: la altura sube con la misma escala que el ancho, así que en la pared los surcos son verticales y paralelos.
   - Con doblez no hay inversa cerrada: `Ij` busca por bisección (Y crece siempre con y).
 - **Tope bajo el papel:** con perspectivas fuertes, justo por debajo del borde de abajo el suelo crecería sin límite; λ se limita a 2·B (queda fuera del papel).
+- **Corte exacto en el doblez (`splitFold`):** el contorno de cada surco se corta justo en la línea donde empieza el doblez (y donde acaba la curva, si hay radio). Con radio 0, ese punto se marca como esquina viva (`p.k`): `rdp` lo conserva y `smoothCmds` no lo suaviza. *Antes el codo caía entre dos muestras, cada borde lo redondeaba a su manera y salía un bulto.*
 - **Densificar antes de proyectar:** un surco recto solo guarda sus dos extremos, así que `dense` lo rellena de puntos cada 5 unidades antes de proyectarlo. *Sin esto, el doblez y la convergencia desaparecían y el surco salía como una recta.*
 - Para que una sola pasada se aleje, sin proyectar todo, está **Alejarse** (arriba).
 
