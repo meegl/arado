@@ -190,7 +190,7 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
 - **Se edita sobre el dibujo proyectado:**
   - `toWorld` deshace la proyección del puntero (`Ij`). Los nodos, las asas, el polígono de control y los círculos de las esquinas se dibujan proyectados.
   - Los nodos y las asas se buscan en pantalla. La tolerancia de los tramos se divide por la escala local λ.
-  - Con perspectiva, el suelo no tiene el tope del papel: los nodos pueden ir hasta 50 anchos a cada lado y 50 alturas hacia el fondo.
+  - Con perspectiva, el suelo no tiene el tope del papel: los nodos pueden ir hasta 50 anchos a cada lado, 50 alturas hacia el fondo y 5 alturas por debajo. *El límite de abajo era el del papel; como el nodo inicial suele estar ya ahí, al arrastrar la pasada entera no se podía bajar.*
   - En el lienzo se dibujan el horizonte (discontinuo) y una cruz en el punto de fuga, si caen cerca del papel.
 - **Dibujo (`projectBuilt`)**, después de los cortes de los cruces:
   - Cada surco (o cada pieza cortada) pasa a ser su contorno en el plano (`AR.ring`, con sus terminaciones), se proyecta punto a punto y se suaviza (`AR.ringD`). Por eso, con perspectiva, todo se exporta como **formas rellenas**.

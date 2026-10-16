@@ -1007,7 +1007,7 @@ function Pj(x,y){if(!pOn())return [x,y];var P=S.persp,f=pFold(y),l=pLam(f.ye);re
 function Ij(X,Y){if(!pOn())return [X,Y];var P=S.persp,HH=H(),c=pPQ(),hz=pHorizon(),v,l;
   if(P.fold){
     // con doblez no hay fórmula cerrada: Y crece siempre con y, así que se busca por bisección
-    var lo=-50*HH,hi=HH+PB;
+    var lo=-50*HH,hi=5*HH;
     for(var it=0;it<50;it++){var m=(lo+hi)/2,f=pFold(m);if(pY(f.ye,f.h)<Y)lo=m;else hi=m}
     var y=(lo+hi)/2;l=pLam(pFold(y).ye);return [P.vx+(X-P.vx)/l,y];
   }
@@ -1016,7 +1016,9 @@ function Ij(X,Y){if(!pOn())return [X,Y];var P=S.persp,HH=H(),c=pPQ(),hz=pHorizon
   else{v=Y*P.B*c.p/(HH-Y*P.B*c.q);l=1/Math.max(c.p+c.q*v,0.02)}
   return [P.vx+(X-P.vx)/l,v*HH]}
 // con perspectiva, el suelo llega mucho más lejos a los lados y hacia el fondo
-function pBounds(){var HH=H();return pOn()?{x0:-50*W,x1:51*W,y0:-50*HH,y1:HH+PB}:{x0:-PB,x1:W+PB,y0:-PB,y1:HH+PB}}
+// (hacia abajo también: con perspectiva, lo que queda por debajo del papel no se ve, y
+// frenarlo impedía bajar la pasada)
+function pBounds(){var HH=H();return pOn()?{x0:-50*W,x1:51*W,y0:-50*HH,y1:5*HH}:{x0:-PB,x1:W+PB,y0:-PB,y1:HH+PB}}
 // rellena de puntos una polilínea (un tramo recto largo solo trae sus dos extremos, y la
 // perspectiva y el doblez curvan lo de en medio)
 function dense(P){var out=[P[0]];for(var i=0;i<P.length-1;i++){var a=P[i],b=P[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.min(600,Math.max(1,Math.ceil(l/5)));
@@ -1195,7 +1197,7 @@ function syncPanel(){
   $('greset').hidden=!pe.nodes.some(function(nd){return nd.g!=null&&nd.g!==100});
   syncFuga(pe);
   if(nd){
-    cfg('nx',pBounds().x0*k,pBounds().x1*k,0.1,nd.x*k);cfg('ny',pBounds().y0*k,(H()+PB)*k,0.1,nd.y*k);cfg('na',0,400,1,ap(nd),1);cfg('ng',0,400,1,nd.g==null?100:nd.g,1);cfg('nt',-360,360,1,nd.t||0,1);
+    cfg('nx',pBounds().x0*k,pBounds().x1*k,0.1,nd.x*k);cfg('ny',pBounds().y0*k,pBounds().y1*k,0.1,nd.y*k);cfg('na',0,400,1,ap(nd),1);cfg('ng',0,400,1,nd.g==null?100:nd.g,1);cfg('nt',-360,360,1,nd.t||0,1);
     cfg('nq',-60,60,0.5,(nd.q||0)*k);cfg('nqe',-20,20,0.5,(nd.qe||0)*k);cfg('nql',0,40,0.5,(nd.ql||0)*k);
     var endN=selN===0||selN===pe.nodes.length-1;$('nqrow').hidden=endN;$('nqerow').hidden=$('nqlrow').hidden=endN||!nd.q;
     var arc=null,b=built[selP];if(b)b.spine.forEach(function(e){if(e.k==='A'&&b.ix[e.vi]===selN)arc=e});
@@ -1392,7 +1394,7 @@ bindSl('pn',curP,function(pe,v){pe.n=Math.max(1,Math.min(400,Math.round(v)))});
 bindSl('ps',curP,function(pe,v){pe.sep=Math.max(0.05,v)/K()});
 bindSl('pw',curP,function(pe,v){pe.w=Math.max(0.02,v)/K()});
 bindSl('nx',curN,function(nd,v){var B=pBounds();nd.x=Math.max(B.x0,Math.min(B.x1,v/K()))});
-bindSl('ny',curN,function(nd,v){nd.y=Math.max(pBounds().y0,Math.min(H()+PB,v/K()))});
+bindSl('ny',curN,function(nd,v){var B=pBounds();nd.y=Math.max(B.y0,Math.min(B.y1,v/K()))});
 // radio: el slider va al cuadrado (0..1000 → 0..nrMax mm); la casilla, en mm
 var nrMax=600;
 (function(){var e=$('nr'),m=$('nrn');
