@@ -6,3 +6,4 @@ Editor de pasadas: haces de surcos (líneas paralelas) que siguen una guía con 
 - Todo vive en `index.html`, sin dependencias ni compilación. Hay tres bloques: `AR` (geometría de los surcos), `AX` (exportador SVG) y la aplicación. Usa ES5, como el resto del archivo. La interfaz, los comentarios y los commits van en español.
 - Para probar, levanta `python3 -m http.server 8765` en esta carpeta y abre `http://localhost:8765`. Comprueba en el navegador cualquier cambio visible.
 - Clave de `localStorage`: `arado-v1`. No leas las claves de Mesa de tangentes ni de Goma y clavos: comparten origen en `meegl.github.io`.
+- GitHub Pages publica `main` desde la raíz: https://meegl.github.io/arado/ (repositorio https://github.com/meegl/arado).

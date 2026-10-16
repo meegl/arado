@@ -2,6 +2,8 @@
 
 Editor visual de **pasadas**: haces de **surcos** (líneas paralelas) que siguen una guía con esquinas redondeadas. Sirve para hacer la base de carteles de líneas que se curvan y dan quiebros, y acabarlos en Illustrator o Affinity. Exporta a **SVG por capas** o **PNG**.
 
+**Úsalo en:** https://meegl.github.io/arado/
+
 Es de la misma familia que [Mesa de tangentes](https://github.com/meegl/mesa-de-tangentes) y [Goma y clavos](https://github.com/meegl/goma-y-clavos).
 
 ## Uso

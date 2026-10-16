@@ -2,6 +2,8 @@
 
 Registro de por qué el programa es como es. Si cambias algo de lo que aquí se describe, actualiza este archivo.
 
+- **Web:** https://meegl.github.io/arado/
+- **Repositorio:** https://github.com/meegl/arado
 - **Origen:** tercer programa de la familia de [Mesa de tangentes](https://github.com/meegl/mesa-de-tangentes) y [Goma y clavos](https://github.com/meegl/goma-y-clavos) (octubre de 2026). Comparte con ellos estilo, interfaz y forma de exportar.
 - **Nombre:** *Arado*, por los surcos paralelos que deja en la tierra. Dentro del programa, cada línea es un **surco** y cada haz de surcos, una **pasada** (una pasada del arado). En la primera versión se llamaban «peine» y «púa». Se cambiaron para que el vocabulario fuera el del nombre.
 
@@ -279,6 +281,7 @@ El usuario pidió que, si algo de lo que toca rompe el dibujo, el control se pon
 ## 11. Cómo se trabaja en el proyecto
 
 - **Un único `index.html`**, sin dependencias ni compilación. JavaScript ES5 (`var`, `function`), igual que en Goma y clavos. Interfaz, comentarios y commits en español.
+- GitHub Pages publica la rama `main` desde la raíz.
 - Para probar, levanta un servidor estático en la carpeta y abre `http://localhost:8765`:
 
   ```bash
