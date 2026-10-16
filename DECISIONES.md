@@ -125,7 +125,11 @@ Cada extremo (**Inicio** y **Fin**) tiene sus propios ajustes, que se editan de 
 
 Hay dos maneras de variar el grosor, y se pueden combinar:
 
-- **Entre surcos** (`pasada.wl`, «Último surco (%)» en la pestaña Pasada): es el grosor del último surco respecto al primero. Los de en medio van en degradado lineal: wk = w · (1 + (wl − 1) · u). Los surcos siguen siendo trazos, cada uno con su `stroke-width` (el del grupo es el del primero).
+- **Entre surcos** (`pasada.wl`, en la pestaña Pasada), con un **reparto** (`pasada.wp`): wk = w · (1 + (wl − 1) · v).
+  - **Lineal:** v = u. El control se llama «Último surco (%)»: grosor del último surco respecto al primero.
+  - **Punta:** v = 1 − |2u − 1|, en forma de tienda de campaña.
+  - **Curva:** v = sin(π·u).
+  - Con Punta y Curva, el control se llama «Surco central (%)»: cambia el centro y los dos bordes quedan con el grosor base. Lo pidió el usuario para poder dejar los dos lados iguales. Los surcos siguen siendo trazos, cada uno con su `stroke-width` (el del grupo es el del primero).
 - **A lo largo de la guía** (`nd.g`, «Grosor (%)» en el panel del nodo): se interpola igual que la apertura, fijo en cada arco y con la misma transición.
   - El SVG no tiene trazos de grosor variable, así que cada surco se exporta como **forma rellena**: su contorno (`outline`), con los dos bordes a ± grosor/2 de la línea central, suavizado con Bézier.
   - Las terminaciones: recta (cierra con una recta), redonda (arcos SVG de radio grosor/2) y cuadrada (alarga los bordes grosor/2).

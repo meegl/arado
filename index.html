@@ -130,7 +130,10 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           <div class="sl"><span>Surcos</span><input type="number" id="pnn" step="1" min="1"><input type="range" id="pn"></div>
           <div class="sl"><span>Separación (mm)</span><input type="number" id="psn" step="0.1" min="0.1"><input type="range" id="ps"></div>
           <div class="sl"><span>Grosor (mm)</span><input type="number" id="pwn" step="0.05" min="0.05"><input type="range" id="pw"></div>
-          <div class="sl" title="Grosor del último surco respecto al primero; los de en medio, en degradado"><span>Último surco (%)</span><input type="number" id="pwln" step="1" min="0"><input type="range" id="pwl"></div>
+          <div class="sl" title="Grosor de ese surco respecto al grosor base; los demás, en degradado"><span id="pwllab">Último surco (%)</span><input type="number" id="pwln" step="1" min="0"><input type="range" id="pwl"></div>
+        </div>
+        <div class="row mt">
+          <label>Reparto del grosor<select id="pwp"><option value="lineal">Lineal</option><option value="punta">Punta (centro)</option><option value="curva">Curva (centro)</option></select></label>
         </div>
         <div class="row mt">
           <label>Terminación<select id="pcap"><option value="butt">Recta</option><option value="round">Redonda</option><option value="square">Cuadrada</option></select></label>
@@ -543,7 +546,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
   }
 
   // pe: {nodes:[{x,y,r,a,g}], n, sep, w, wl, mode, tr, cap, ext:{ini, fin}}
-  // wl: grosor del último surco respecto al primero (%); g: grosor en el nodo (%)
+  // wl: grosor del último surco (o del central, con wp 'punta' o 'curva') respecto al primero (%); g: grosor en el nodo (%)
   // ext.*: {perfil, inv, amp, ondas, vari, seed, deco, hueco, cant}
   function build(pe) {
     var c = clean(pe.nodes), res = { paths: [], dots: [], dashes: [], fold: false, spine: [], ix: c.ix };
@@ -565,7 +568,10 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           if ((Q[j + 1][0] - Q[j][0]) * (c.P[j + 1][0] - c.P[j][0]) + (Q[j + 1][1] - Q[j][1]) * (c.P[j + 1][1] - c.P[j][1]) < 0) o.fold = true;
       } else o = offsetSegs(res.spine, d);
       if (o.fold) res.fold = true;
-      var u = n > 1 ? k / (n - 1) : 0.5, wk = pe.w * (1 + (wl - 1) * u);
+      // reparto del grosor entre surcos: lineal (del primero al último) o simétrico
+      // (punta o curva: cambia el centro y los bordes quedan con el grosor base)
+      var u = n > 1 ? k / (n - 1) : 0.5, v = pe.wp === 'punta' ? 1 - Math.abs(2 * u - 1) : pe.wp === 'curva' ? Math.sin(Math.PI * u) : u;
+      var wk = pe.w * (1 + (wl - 1) * v);
       var sg = trim(o.segs, Math.max(0, xi.amp || 0) * profile(xi, u, k), Math.max(0, xf.amp || 0) * profile(xf, u, k + 1000));
       if (!sg) continue;
       if (varyG) { var od = outline(sg, wk, pe.cap || 'butt'); if (od) res.paths.push({ d: od, w: wk, fill: true }); }
@@ -795,7 +801,7 @@ function syncPanel(){
   $('nosel').hidden=!need||!!pe;
   var nd=pe&&pe.nodes[selN];$('nodesec').hidden=!nd;
   if(!pe)return;
-  cfg('pn',1,80,1,pe.n,1);cfg('ps',0.2,30,0.1,pe.sep*k);cfg('pw',0.05,20,0.05,pe.w*k);cfg('pwl',0,400,1,pe.wl==null?100:pe.wl,1);
+  cfg('pn',1,80,1,pe.n,1);cfg('ps',0.2,30,0.1,pe.sep*k);cfg('pw',0.05,20,0.05,pe.w*k);cfg('pwl',0,400,1,pe.wl==null?100:pe.wl,1);$('pwp').value=pe.wp||'lineal';$('pwllab').textContent=(pe.wp&&pe.wp!=='lineal')?'Surco central (%)':'Último surco (%)';
   $('pcap').value=pe.cap;$('pmode').value=pe.mode;
   var x=pe.ext[endK];
   document.querySelectorAll('[data-end]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.end===endK)});
@@ -988,6 +994,7 @@ var nrMax=600;
 document.querySelectorAll('[data-tab]').forEach(function(b){b.addEventListener('click',function(){tab=b.dataset.tab;syncPanel()})});
 bindSl('pwl',curP,function(pe,v){pe.wl=Math.max(0,Math.min(400,Math.round(v)))});
 bindSl('ng',curN,function(nd,v){nd.g=Math.max(0,Math.min(400,Math.round(v)))});
+$('pwp').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.wp=this.value;changed()});
 $('greset').addEventListener('click',function(){var pe=curP();if(!pe)return;pushHist();pe.nodes.forEach(function(nd){nd.g=100});changed()});
 bindSl('na',curN,function(nd,v){nd.a=Math.max(0,Math.min(400,Math.round(v)))});
 $('ftr').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.tr=this.value;changed()});
