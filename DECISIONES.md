@@ -175,14 +175,16 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
   - **Ver en perspectiva**
   - **Ancho abajo** (`B`): ancho del dibujo en el borde de abajo, en proporción al papel.
   - **Ancho arriba** (`T`): ancho en el borde de arriba.
+  - **Horizonte** (`hz`): automático por defecto (`hz` = null), o fijo donde se quiera, también dentro del papel, para dejar cielo arriba. La casilla «Horizonte automático» lo devuelve a su sitio.
   - **Fuga X** (`vx`): hacia dónde convergen.
-- **El borde de abajo de la composición queda siempre abajo del papel, y el de arriba, arriba.**
+- **Con el horizonte automático, el borde de abajo de la composición queda siempre abajo del papel, y el de arriba, arriba.** Con horizonte manual, el de abajo sigue abajo y el de arriba se acerca al horizonte. El usuario lo pidió después de probar los dos anchos.
   - *La primera versión tenía Horizonte, Profundidad y Escala, con el borde de abajo fijo a tamaño real. Agrandarla la sacaba por abajo y, sin agrandar, aplastaba el dibujo y dejaba vacía la mitad de arriba. El usuario propuso controlar «ampliar abajo» y «achatar arriba», y así se rehízo.*
 - **El modelo:** la homografía que lleva el rectángulo del papel a un trapecio. Con v = y/H (0 arriba, 1 abajo):
   - λ(v) = 1/(p + q·v), con p = 1/T y q = 1/B − 1/T; así λ(0) = T y λ(1) = B.
   - X = vx + (x − vx)·λ e Y = H·v·λ/B; así Y(0) = 0 e Y(H) = H.
   - Las rectas siguen siendo rectas, y el escorzo vertical sale solo de la diferencia entre los dos anchos.
-  - Si arriba es más estrecho, el horizonte está en Y = H/(B·q), por encima del papel.
+  - En general, Y = hz + (H − hz)·λ/B. El horizonte automático es hz = H/(B·q), el que hace que Y(0) = 0; si arriba es más estrecho, queda por encima del papel. Con horizonte manual se usa P.hz y la parte de arriba de la composición cae en hz + (H − hz)·T/B.
+  - Si los dos anchos son iguales (q = 0) no hay horizonte y el manual se ignora.
   - Con los dos anchos al 100 % no hay proyección.
 - Al quitar la perspectiva se ve la composición plana tal cual: los nodos se guardan siempre en el plano.
 - **Se edita sobre el dibujo proyectado:**

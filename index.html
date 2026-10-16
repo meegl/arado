@@ -215,6 +215,8 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         <div class="stack mt" id="pbox2">
           <div class="sl" title="Ancho del dibujo en el borde de abajo del papel (100 % = igual que el papel)"><span>Ancho abajo (%)</span><input type="number" id="pbn" step="1" min="10"><input type="range" id="pb" data-def="100"></div>
           <div class="sl" title="Ancho del dibujo en el borde de arriba: cuanto menos, más se achata y se aleja"><span>Ancho arriba (%)</span><input type="number" id="ptn" step="1" min="2"><input type="range" id="pt" data-def="40"></div>
+          <div class="sl" title="Altura del horizonte desde arriba del papel (negativo: por encima del papel)"><span>Horizonte (mm)</span><input type="number" id="phzn" step="1"><input type="range" id="phz"></div>
+          <label class="inline"><input type="checkbox" id="phzauto">Horizonte automático (el dibujo llena el papel)</label>
           <div class="sl" title="Hacia dónde convergen, a izquierda o derecha"><span>Fuga X (mm)</span><input type="number" id="pvxn" step="1"><input type="range" id="pvx"></div>
         </div>
         <p class="hint">La composición se proyecta sobre un suelo que se aleja: amplía la parte de abajo y estrecha la de arriba. Lo de abajo queda abajo del papel y lo de arriba, arriba. Se edita sobre el dibujo proyectado. Con perspectiva, los surcos se exportan como formas rellenas.</p>
@@ -971,12 +973,19 @@ function pOn(){return !!(S.persp&&S.persp.on&&S.persp.B!=null)}
  * X = vx + (x − vx)·λ;  Y = H·v·λ/B (Y(0)=0, Y(1)=H). Las rectas siguen rectas. */
 function pPQ(){var P=S.persp;return {p:1/P.T,q:1/P.B-1/P.T}}
 function pS(x,y){if(!pOn())return 1;var c=pPQ(),d=c.p+c.q*(y/H());return 1/Math.max(d,0.02)}
-function Pj(x,y){if(!pOn())return [x,y];var P=S.persp,l=pS(x,y);return [P.vx+(x-P.vx)*l,H()*(y/H())*l/P.B]}
-// horizonte: la Y a la que tiende el suelo muy lejos (si arriba es más estrecho que abajo)
-function pHorizon(){var P=S.persp,c=pPQ();return c.q<-1e-9?H()/(P.B*c.q):null}
-function Ij(X,Y){if(!pOn())return [X,Y];var P=S.persp,HH=H(),c=pPQ(),hz=pHorizon();
-  if(hz!=null)Y=Math.max(Y,hz+0.5);
-  var v=Y*P.B*c.p/(HH-Y*P.B*c.q),l=1/Math.max(c.p+c.q*v,0.02);return [P.vx+(X-P.vx)/l,v*HH]}
+// horizonte: la Y a la que tiende el suelo muy lejos. Automático (hz == null): el que
+// hace que lo de arriba de la composición quede arriba del papel; manual: P.hz.
+// En los dos casos, Y = hz + (H − hz)·λ/B (con λ = B el borde de abajo queda abajo).
+function pManual(){var P=S.persp,c=pPQ();return P.hz!=null&&Math.abs(c.q)>1e-9}
+function pHorizon(){var P=S.persp,c=pPQ();if(pManual())return P.hz;return Math.abs(c.q)>1e-9?H()/(P.B*c.q):null}
+function Pj(x,y){if(!pOn())return [x,y];var P=S.persp,l=pS(x,y),HH=H();
+  if(!pManual())return [P.vx+(x-P.vx)*l,HH*(y/HH)*l/P.B];
+  return [P.vx+(x-P.vx)*l,P.hz+(HH-P.hz)*l/P.B]}
+function Ij(X,Y){if(!pOn())return [X,Y];var P=S.persp,HH=H(),c=pPQ(),hz=pHorizon(),v,l;
+  if(hz!=null&&hz<HH)Y=Math.max(Y,hz+0.5);
+  if(pManual()){l=Math.max(0.02,(Y-P.hz)*P.B/(HH-P.hz));v=(1/l-c.p)/c.q}
+  else{v=Y*P.B*c.p/(HH-Y*P.B*c.q);l=1/Math.max(c.p+c.q*v,0.02)}
+  return [P.vx+(X-P.vx)/l,v*HH]}
 // con perspectiva, el suelo llega mucho más lejos a los lados y hacia el fondo
 function pBounds(){var HH=H();return pOn()?{x0:-50*W,x1:51*W,y0:-50*HH,y1:HH+PB}:{x0:-PB,x1:W+PB,y0:-PB,y1:HH+PB}}
 // con perspectiva, cada surco (ya cortado por los cruces) pasa a ser su contorno proyectado
@@ -1127,7 +1136,8 @@ function syncAll(){
 var tab='pasada';
 function syncPersp(){
   var k=K(),P=persp(),HH=H();$('pon').checked=!!P.on;$('pbox2').hidden=!P.on;
-  cfg('pb',10,400,1,Math.round(P.B*100),1);cfg('pt',2,150,1,Math.round(P.T*100),1);cfg('pvx',-W*k,2*W*k,1,P.vx*k);
+  cfg('pb',10,400,1,Math.round(P.B*100),1);cfg('pt',2,150,1,Math.round(P.T*100),1);
+  var hz=P.on?pHorizon():null;cfg('phz',-HH*k,(HH-10)*k,1,hz==null?-HH*k:hz*k);$('phzauto').checked=P.hz==null;cfg('pvx',-W*k,2*W*k,1,P.vx*k);
 }
 function syncPanel(){
   var k=K(), pe=S.pasadas[selP], need=tab!=='papel';
@@ -1363,6 +1373,8 @@ $('pon').addEventListener('change',function(){pushHist();persp().on=this.checked
 bindSl('pb',curPersp,function(P,v){P.B=Math.max(0.1,Math.min(4,v/100))});
 bindSl('pt',curPersp,function(P,v){P.T=Math.max(0.02,Math.min(1.5,v/100))});
 bindSl('pvx',curPersp,function(P,v){P.vx=v/K()});
+bindSl('phz',curPersp,function(P,v){P.hz=Math.max(-H(),Math.min(H()-10,v/K()))});
+$('phzauto').addEventListener('change',function(){var P=persp();pushHist();if(this.checked)P.hz=null;else{var h=pHorizon();P.hz=h==null?-H()*0.3:h}changed()});
 bindSl('nt',curN,function(nd,v){nd.t=Math.max(-360,Math.min(360,Math.round(v)))});
 bindSl('plej',curP,function(pe,v){pe.lejos=Math.max(3,Math.min(100,Math.round(v)))});
 $('plejini').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.lejosIni=this.checked;changed()});
