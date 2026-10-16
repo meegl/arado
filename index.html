@@ -109,6 +109,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         <div class="sl"><span>Y (mm)</span><input type="number" id="nyn" step="0.1"><input type="range" id="ny"></div>
         <div class="sl" id="nrrow"><span>Radio (mm)</span><input type="number" id="nrn" step="0.1" min="0"><input type="range" id="nr"></div>
         <div class="sl"><span>Apertura (%)</span><input type="number" id="nan" step="1" min="0"><input type="range" id="na"></div>
+        <div class="sl" title="Grosor de los surcos al pasar por este nodo"><span>Grosor (%)</span><input type="number" id="ngn" step="1" min="0"><input type="range" id="ng"></div>
       </div>
       <p class="hint" id="nrinfo"></p>
       <div class="btns"><button id="ndel" class="danger">Eliminar nodo</button></div>
@@ -129,6 +130,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           <div class="sl"><span>Surcos</span><input type="number" id="pnn" step="1" min="1"><input type="range" id="pn"></div>
           <div class="sl"><span>Separación (mm)</span><input type="number" id="psn" step="0.1" min="0.1"><input type="range" id="ps"></div>
           <div class="sl"><span>Grosor (mm)</span><input type="number" id="pwn" step="0.05" min="0.05"><input type="range" id="pw"></div>
+          <div class="sl" title="Grosor del último surco respecto al primero; los de en medio, en degradado"><span>Último surco (%)</span><input type="number" id="pwln" step="1" min="0"><input type="range" id="pwl"></div>
         </div>
         <div class="row mt">
           <label>Terminación<select id="pcap"><option value="butt">Recta</option><option value="round">Redonda</option><option value="square">Cuadrada</option></select></label>
@@ -136,6 +138,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         </div>
         <p class="hint" id="pinfo"></p>
         <div class="btns">
+          <button id="greset" hidden>Grosor de los nodos al 100 %</button>
           <button id="pdup">Duplicar</button>
           <button id="pdel" class="danger">Eliminar pasada</button>
         </div>
@@ -223,13 +226,13 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
 
   // quita nodos repetidos seguidos; ix guarda el índice original de cada uno
   function clean(nodes) {
-    var P = [], R = [], A = [], ix = [];
+    var P = [], R = [], A = [], G = [], ix = [];
     nodes.forEach(function (nd, i) {
       var q = P[P.length - 1];
       if (q && Math.abs(q[0] - nd.x) < EPS && Math.abs(q[1] - nd.y) < EPS) return;
-      P.push([nd.x, nd.y]); R.push(Math.max(0, nd.r || 0)); A.push(nd.a == null ? 100 : Math.max(0, nd.a)); ix.push(i);
+      P.push([nd.x, nd.y]); R.push(Math.max(0, nd.r || 0)); A.push(nd.a == null ? 100 : Math.max(0, nd.a)); G.push(nd.g == null ? 100 : Math.max(0, nd.g)); ix.push(i);
     });
-    return { P: P, R: R, A: A, ix: ix };
+    return { P: P, R: R, A: A, G: G, ix: ix };
   }
 
   // P: vértices, R: radio pedido en cada vértice.
@@ -311,7 +314,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
   }
   // punto a la fracción f del tramo
   function segAt(e, f) {
-    if (e.k === 'L') return [e.a[0] + (e.b[0] - e.a[0]) * f, e.a[1] + (e.b[1] - e.a[1]) * f];
+    if (e.k === 'L') return e.a.map(function (v, i) { return v + (e.b[i] - v) * f; });
     var s = arcSpan(e), t = s.t0 + (e.sw ? 1 : -1) * s.span * f;
     return [e.c[0] + e.r * Math.cos(t), e.c[1] + e.r * Math.sin(t)];
   }
@@ -371,7 +374,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         res.dots.push([p[0] + o[0] * s, p[1] + o[1] * s, w / 2]);
       } else {
         var dl = 3 * w, s0 = gap + i * (dl + gap), s1 = s0 + dl;
-        res.dashes.push('M' + fmt(p[0] + o[0] * s0) + ' ' + fmt(p[1] + o[1] * s0) + 'L' + fmt(p[0] + o[0] * s1) + ' ' + fmt(p[1] + o[1] * s1));
+        res.dashes.push({ w: w, d: 'M' + fmt(p[0] + o[0] * s0) + ' ' + fmt(p[1] + o[1] * s0) + 'L' + fmt(p[0] + o[0] * s1) + ' ' + fmt(p[1] + o[1] * s1) });
       }
     }
   }
@@ -423,9 +426,10 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     // La apertura es fija dentro y cambia solo en las rectas de entre medias; con
     // la transición suave, el cambio empieza y acaba sin pendiente y los surcos no
     // hacen codo al pasar de recta a curva
-    var last = cl.P.length - 1, iv = [], aN = [];
-    for (j = 0; j <= last; j++) { iv.push(j === 0 ? [0, 0] : j === last ? [pos, pos] : at[j]); aN.push(cl.A[j] / 100); }
-    function apAt(s) {
+    var last = cl.P.length - 1, iv = [];
+    for (j = 0; j <= last; j++) iv.push(j === 0 ? [0, 0] : j === last ? [pos, pos] : at[j]);
+    // valor por nodo (apertura o grosor) interpolado a lo largo de la guía
+    function interp(aN, s) {
       for (var q = 0; q <= last; q++) {
         if (s <= iv[q][1] + 1e-9) {
           if (q === 0 || s >= iv[q][0] - 1e-9) return aN[q];
@@ -436,14 +440,15 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
       }
       return aN[last];
     }
-    var fmax = 0;
-    S.forEach(function (q) { q.f = apAt(q.s); fmax = Math.max(fmax, q.f); });
+    var fmax = 0, An = cl.A.map(function (v) { return v / 100; }), Gn = cl.G.map(function (v) { return v / 100; });
+    S.forEach(function (q) { q.f = interp(An, q.s); q.g = interp(Gn, q.s); fmax = Math.max(fmax, q.f); });
     return function (d) {
       // solo se guardan los puntos que avanzan en el sentido de la guía: cuando
       // un surco interior queda más lejos que el radio de la curva, su paralela
       // retrocede y hace ganchos y rizos; quitando el retroceso queda una esquina limpia
       // (se quitan los trozos que retroceden y unloop corta donde se cruzan las dos ramas)
-      var Q = S.map(function (q) { return [q.p[0] + q.n[0] * d * q.f, q.p[1] + q.n[1] * d * q.f]; });
+      // cada punto lleva un tercer valor: el factor de grosor en ese sitio
+      var Q = S.map(function (q) { return [q.p[0] + q.n[0] * d * q.f, q.p[1] + q.n[1] * d * q.f, q.g]; });
       var P = Q.filter(function (p, m) {
         if (m === 0 || m === Q.length - 1) return true;
         var q = S[m], o = Q[m - 1];
@@ -472,7 +477,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         len += Math.sqrt((P[j][0] - P[j - 1][0]) * (P[j][0] - P[j - 1][0]) + (P[j][1] - P[j - 1][1]) * (P[j][1] - P[j - 1][1]));
         if (len > maxLen) break;
         var X = hit(P[i], P[i + 1], P[j], P[j + 1]);
-        if (X) { best = j; bx = X; }
+        if (X) { best = j; bx = X; X.push(P[i + 1][2]); }
       }
       if (best > 0) P.splice(i + 1, best - i, bx);
     }
@@ -491,14 +496,19 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
   }
   function unit(x, y) { var l = Math.sqrt(x * x + y * y) || 1; return [x / l, y / l]; }
   function toDSmooth(segs) {
-    var P = rdp([segs[0].a].concat(segs.map(function (e) { return e.b; })), 0.2), n = P.length, T = [], i;
+    var P = rdp([segs[0].a].concat(segs.map(function (e) { return e.b; })), 0.2);
+    return 'M' + fmt(P[0][0]) + ' ' + fmt(P[0][1]) + smoothCmds(P);
+  }
+  // curvas Bézier que pasan por los puntos P (desde P[0], que ya es el punto actual)
+  function smoothCmds(P) {
+    var n = P.length, T = [], i;
     for (i = 0; i < n; i++) {
       var p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[Math.min(n - 1, i + 1)];
       var din = unit(p1[0] - p0[0], p1[1] - p0[1]), dout = unit(p2[0] - p1[0], p2[1] - p1[1]);
       var sharp = i > 0 && i < n - 1 && din[0] * dout[0] + din[1] * dout[1] < Math.cos(35 * Math.PI / 180);
       T.push(sharp ? { i: din, o: dout } : (function (t) { return { i: t, o: t }; })(i === 0 ? dout : i === n - 1 ? din : unit(p2[0] - p0[0], p2[1] - p0[1])));
     }
-    var out = ['M' + fmt(P[0][0]) + ' ' + fmt(P[0][1])];
+    var out = [];
     for (i = 0; i < n - 1; i++) {
       var a = P[i], b = P[i + 1], l = Math.sqrt((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1])) / 3;
       out.push('C' + fmt(a[0] + T[i].o[0] * l) + ' ' + fmt(a[1] + T[i].o[1] * l) + ' ' + fmt(b[0] - T[i + 1].i[0] * l) + ' ' + fmt(b[1] - T[i + 1].i[1] * l) + ' ' + fmt(b[0]) + ' ' + fmt(b[1]));
@@ -506,14 +516,44 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     return out.join('');
   }
 
-  // pe: {nodes:[{x,y,r,a}], n, sep, w, mode, tr, ext:{ini, fin}}
+  /* ---- grosor variable a lo largo del surco ----
+   * El SVG no tiene trazos de grosor variable: el surco se convierte en su
+   * contorno (dos bordes a ± grosor/2 de su línea central) y se rellena.
+   * La terminación (recta, redonda, cuadrada) se dibuja en los extremos. */
+  function outline(segs, w, cap) {
+    var P = [segs[0].a].concat(segs.map(function (e) { return e.b; })).filter(function (p, i, a) {
+      return !i || Math.abs(p[0] - a[i - 1][0]) + Math.abs(p[1] - a[i - 1][1]) > 1e-6;
+    });
+    var n = P.length, Lp = [], Rp = [], i;
+    if (n < 2) return null;
+    function hw(p) { return w * (p[2] == null ? 1 : p[2]) / 2; }
+    for (i = 0; i < n; i++) {
+      var p0 = P[Math.max(0, i - 1)], p2 = P[Math.min(n - 1, i + 1)], t = unit(p2[0] - p0[0], p2[1] - p0[1]), h = hw(P[i]);
+      Lp.push([P[i][0] - t[1] * h, P[i][1] + t[0] * h]); Rp.push([P[i][0] + t[1] * h, P[i][1] - t[0] * h]);
+    }
+    var hs = hw(P[0]), he = hw(P[n - 1]), t0 = unit(P[1][0] - P[0][0], P[1][1] - P[0][1]), t1 = unit(P[n - 1][0] - P[n - 2][0], P[n - 1][1] - P[n - 2][1]);
+    if (cap === 'square') {
+      [Lp, Rp].forEach(function (S) { S[0] = [S[0][0] - t0[0] * hs, S[0][1] - t0[1] * hs]; S[n - 1] = [S[n - 1][0] + t1[0] * he, S[n - 1][1] + t1[1] * he]; });
+    }
+    var L = rdp(Lp, 0.15), R = rdp(Rp.reverse(), 0.15), rd = cap === 'round';
+    function pt(p) { return fmt(p[0]) + ' ' + fmt(p[1]); }
+    return 'M' + pt(L[0]) + smoothCmds(L) +
+      (rd && he > 1e-6 ? 'A' + fmt(he) + ' ' + fmt(he) + ' 0 0 0 ' : 'L') + pt(R[0]) + smoothCmds(R) +
+      (rd && hs > 1e-6 ? 'A' + fmt(hs) + ' ' + fmt(hs) + ' 0 0 0 ' + pt(L[0]) : '') + 'Z';
+  }
+
+  // pe: {nodes:[{x,y,r,a,g}], n, sep, w, wl, mode, tr, cap, ext:{ini, fin}}
+  // wl: grosor del último surco respecto al primero (%); g: grosor en el nodo (%)
   // ext.*: {perfil, inv, amp, ondas, vari, seed, deco, hueco, cant}
   function build(pe) {
     var c = clean(pe.nodes), res = { paths: [], dots: [], dashes: [], fold: false, spine: [], ix: c.ix };
     if (c.P.length < 2) return res;
     res.spine = fillet(c.P, c.R);
     var n = Math.max(1, Math.round(pe.n)), k, ext = pe.ext || {}, xi = ext.ini || {}, xf = ext.fin || {};
-    var fan = c.A.some(function (a) { return a !== 100; }) ? fanMaker(res.spine, c, pe.tr) : null;
+    var varyG = c.G.some(function (g) { return g !== 100; });
+    var fan = varyG || c.A.some(function (a) { return a !== 100; }) ? fanMaker(res.spine, c, pe.tr) : null;
+    var wl = (pe.wl == null ? 100 : pe.wl) / 100;
+    res.outline = varyG;
     for (k = 0; k < n; k++) {
       var d = (k - (n - 1) / 2) * pe.sep, o;
       if (fan) o = { segs: fan(d), fold: false };
@@ -525,13 +565,14 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           if ((Q[j + 1][0] - Q[j][0]) * (c.P[j + 1][0] - c.P[j][0]) + (Q[j + 1][1] - Q[j][1]) * (c.P[j + 1][1] - c.P[j][1]) < 0) o.fold = true;
       } else o = offsetSegs(res.spine, d);
       if (o.fold) res.fold = true;
-      var u = n > 1 ? k / (n - 1) : 0.5;
+      var u = n > 1 ? k / (n - 1) : 0.5, wk = pe.w * (1 + (wl - 1) * u);
       var sg = trim(o.segs, Math.max(0, xi.amp || 0) * profile(xi, u, k), Math.max(0, xf.amp || 0) * profile(xf, u, k + 1000));
       if (!sg) continue;
-      res.paths.push(fan ? toDSmooth(sg) : toD(sg));
+      if (varyG) { var od = outline(sg, wk, pe.cap || 'butt'); if (od) res.paths.push({ d: od, w: wk, fill: true }); }
+      else res.paths.push({ d: fan ? toDSmooth(sg) : toD(sg), w: wk });
       var a = sg[0], z = sg[sg.length - 1], da = segDir(a, a.a), dz = segDir(z, z.b);
-      decos(xi, a.a, [-da[0], -da[1]], pe.w, res);
-      decos(xf, z.b, dz, pe.w, res);
+      decos(xi, a.a, [-da[0], -da[1]], wk * (a.a[2] == null ? 1 : a.a[2]), res);
+      decos(xf, z.b, dz, wk * (z.b[2] == null ? 1 : z.b[2]), res);
     }
     // ¿cabe la pasada en cada curva? Con radio, todos los surcos deben girar en
     // arco (d + w/2 ≤ r); sin radio (esquina viva), la esquina del surco de
@@ -540,7 +581,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     res.tight = [];
     if (hw > 1e-9 && (fan || pe.mode !== 'igual')) res.spine.forEach(function (e) {
       if (e.k !== 'A') return;
-      var dmax = e.r > 1e-6 ? e.r - pe.w / 2 : (e.tn > 1e-9 ? e.room / e.tn : Infinity);
+      var dmax = e.r > 1e-6 ? e.r - Math.max(pe.w, pe.w * wl) * c.G[e.vi] / 100 / 2 : (e.tn > 1e-9 ? e.room / e.tn : Infinity);
       var amax = Math.max(0, dmax / hw * 100), a = c.A[e.vi];
       if (a > amax + 0.5) res.tight.push({ i: c.ix[e.vi], amax: Math.floor(amax) });
     });
@@ -579,9 +620,13 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
       if (!pe.paths.length) return;
       var id = 'pasada-' + (i + 1);
       g.push('<g id="' + id + '" fill="none" stroke="' + INK + '" stroke-width="' + n(pe.w) + '" stroke-linecap="' + pe.cap + '" stroke-linejoin="miter" stroke-miterlimit="10">' +
-        pe.paths.map(function (d, j) { return '<path id="' + id + '-surco-' + pad(j) + '" d="' + d + '"/>'; }).join('') +
+        // trazo (con su grosor si no es el del grupo) o forma rellena si el grosor varía a lo largo
+        pe.paths.map(function (p, j) {
+          var at = p.fill ? ' fill="' + INK + '" stroke="none"' : (Math.abs(p.w - pe.w) > 1e-6 ? ' stroke-width="' + n(p.w) + '"' : '');
+          return '<path id="' + id + '-surco-' + pad(j) + '"' + at + ' d="' + p.d + '"/>';
+        }).join('') +
         (pe.dots.length || pe.dashes.length ? '<g id="' + id + '-remates">' +
-          pe.dashes.map(function (d) { return '<path d="' + d + '"/>'; }).join('') +
+          pe.dashes.map(function (x) { return '<path stroke-width="' + n(x.w) + '" d="' + x.d + '"/>'; }).join('') +
           pe.dots.map(function (q) { return '<circle cx="' + n(q[0]) + '" cy="' + n(q[1]) + '" r="' + n(q[2]) + '" fill="' + INK + '" stroke="none"/>'; }).join('') +
           '</g>' : '') + '</g>');
     });
@@ -666,8 +711,8 @@ function paint(c,sc,ex,transp){
   if(!transp&&(sh.paper||!ex)){c.fillStyle=TGXPaper(sh.paper);c.fillRect(ex?0:-PB,ex?0:-PB,ex?W:W+2*PB,ex?HH:HH+2*PB)}
   if(sh.grid){c.strokeStyle=AX.GRID;c.lineWidth=ex?0.12/K():px;c.beginPath();AX.gridLines(o).forEach(function(l){c.moveTo(l[0],l[1]);c.lineTo(l[2],l[3])});c.stroke()}
   c.strokeStyle=AX.INK; c.lineJoin='miter'; c.miterLimit=10;
-  o.pasadas.forEach(function(pe){c.lineWidth=pe.w;c.lineCap=pe.cap;pe.paths.concat(pe.dashes).forEach(function(d){c.stroke(new Path2D(d))});
-    c.fillStyle=AX.INK;pe.dots.forEach(function(q){c.beginPath();c.arc(q[0],q[1],q[2],0,Math.PI*2);c.fill()})});
+  o.pasadas.forEach(function(pe){c.lineCap=pe.cap;c.fillStyle=AX.INK;
+    pe.paths.concat(pe.dashes).forEach(function(p){var P=new Path2D(p.d);if(p.fill)c.fill(P,'nonzero');else{c.lineWidth=p.w;c.stroke(P)}});pe.dots.forEach(function(q){c.beginPath();c.arc(q[0],q[1],q[2],0,Math.PI*2);c.fill()})});
   if(ex)return;
   // mesa: velo sobre lo que queda fuera del papel
   var st=getComputedStyle(document.documentElement);
@@ -750,7 +795,7 @@ function syncPanel(){
   $('nosel').hidden=!need||!!pe;
   var nd=pe&&pe.nodes[selN];$('nodesec').hidden=!nd;
   if(!pe)return;
-  cfg('pn',1,80,1,pe.n,1);cfg('ps',0.2,30,0.1,pe.sep*k);cfg('pw',0.05,20,0.05,pe.w*k);
+  cfg('pn',1,80,1,pe.n,1);cfg('ps',0.2,30,0.1,pe.sep*k);cfg('pw',0.05,20,0.05,pe.w*k);cfg('pwl',0,400,1,pe.wl==null?100:pe.wl,1);
   $('pcap').value=pe.cap;$('pmode').value=pe.mode;
   var x=pe.ext[endK];
   document.querySelectorAll('[data-end]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.end===endK)});
@@ -758,10 +803,11 @@ function syncPanel(){
   cfg('ea',0,150,0.5,x.amp*k);cfg('eo',0.5,12,0.5,x.ondas);cfg('ev',0,100,1,x.vari,1);
   cfg('eh',0,20,0.1,x.hueco*k);cfg('ec',1,9,1,x.cant,1);
   $('eorow').hidden=x.perfil!=='ondas';$('edbox').hidden=x.deco==='nada';$('eseed').disabled=!x.vari;
-  $('pinfo').textContent='Ancho total: '+(Math.round(((Math.max(1,pe.n)-1)*pe.sep+pe.w)*k*10)/10)+' mm · '+pe.nodes.length+' nodo'+(pe.nodes.length===1?'':'s')+(pe.nodes.length<2?' (añade otro para ver los surcos)':'');
+  $('pinfo').textContent='Ancho total: '+(Math.round(((Math.max(1,pe.n)-1)*pe.sep+pe.w)*k*10)/10)+' mm · '+pe.nodes.length+' nodo'+(pe.nodes.length===1?'':'s')+(pe.nodes.length<2?' (añade otro para ver los surcos)':'')+(built[selP]&&built[selP].outline?'. Con grosor variable a lo largo, los surcos se exportan como formas rellenas.':'');
+  $('greset').hidden=!pe.nodes.some(function(nd){return nd.g!=null&&nd.g!==100});
   syncFuga(pe);
   if(nd){
-    cfg('nx',-PB*k,(W+PB)*k,0.1,nd.x*k);cfg('ny',-PB*k,(H()+PB)*k,0.1,nd.y*k);cfg('na',0,400,1,ap(nd),1);
+    cfg('nx',-PB*k,(W+PB)*k,0.1,nd.x*k);cfg('ny',-PB*k,(H()+PB)*k,0.1,nd.y*k);cfg('na',0,400,1,ap(nd),1);cfg('ng',0,400,1,nd.g==null?100:nd.g,1);
     var arc=null,b=built[selP];if(b)b.spine.forEach(function(e){if(e.k==='A'&&b.ix[e.vi]===selN)arc=e});
     // slider progresivo: rango amplio sin perder precisión en los radios pequeños
     var rq=(nd.r||0)*k,f=fm();if(!pPushed)nrMax=Math.max(2*Math.max(f.w,f.h),rq);
@@ -940,6 +986,9 @@ var nrMax=600;
   m.addEventListener('change',function(){apply(parseFloat(this.value),true)});
 })();
 document.querySelectorAll('[data-tab]').forEach(function(b){b.addEventListener('click',function(){tab=b.dataset.tab;syncPanel()})});
+bindSl('pwl',curP,function(pe,v){pe.wl=Math.max(0,Math.min(400,Math.round(v)))});
+bindSl('ng',curN,function(nd,v){nd.g=Math.max(0,Math.min(400,Math.round(v)))});
+$('greset').addEventListener('click',function(){var pe=curP();if(!pe)return;pushHist();pe.nodes.forEach(function(nd){nd.g=100});changed()});
 bindSl('na',curN,function(nd,v){nd.a=Math.max(0,Math.min(400,Math.round(v)))});
 $('ftr').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.tr=this.value;changed()});
 function setAp(fn){var pe=curP();if(!pe)return;pushHist();pe.nodes.forEach(fn);changed()}

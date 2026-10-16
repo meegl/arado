@@ -121,6 +121,20 @@ Cada extremo (**Inicio** y **Fin**) tiene sus propios ajustes, que se editan de 
 - **Ajustar a la curva** (pestaña Fuga) baja la apertura de esos nodos al 97 % de lo que cabe. Repite hasta cuatro veces por si al cambiar uno cambia otro.
 - Origen: una pasada de 85 mm de ancho en un giro de 136° cuyo radio real se quedaba en 13 mm. Los surcos de dentro no cabían y salían pinchos, ganchos y trozos perdidos. El usuario lo había resuelto a mano bajando la apertura en ese nodo, y el botón hace lo mismo.
 
+### Grosor variable
+
+Hay dos maneras de variar el grosor, y se pueden combinar:
+
+- **Entre surcos** (`pasada.wl`, «Último surco (%)» en la pestaña Pasada): es el grosor del último surco respecto al primero. Los de en medio van en degradado lineal: wk = w · (1 + (wl − 1) · u). Los surcos siguen siendo trazos, cada uno con su `stroke-width` (el del grupo es el del primero).
+- **A lo largo de la guía** (`nd.g`, «Grosor (%)» en el panel del nodo): se interpola igual que la apertura, fijo en cada arco y con la misma transición.
+  - El SVG no tiene trazos de grosor variable, así que cada surco se exporta como **forma rellena**: su contorno (`outline`), con los dos bordes a ± grosor/2 de la línea central, suavizado con Bézier.
+  - Las terminaciones: recta (cierra con una recta), redonda (arcos SVG de radio grosor/2) y cuadrada (alarga los bordes grosor/2).
+  - El factor de grosor viaja con cada punto como tercer valor ([x, y, g]) a través del filtrado, `unloop` y el recorte de los extremos.
+  - Los remates (puntos y guiones) usan el grosor del surco en ese extremo.
+  - La pestaña Pasada avisa de que se exporta como formas, y tiene un botón para volver los grosores de los nodos al 100 %.
+- El cálculo de si la pasada cabe en la curva usa el grosor mayor (primero o último surco) por el grosor del nodo.
+- Esto ya prepara las fases 5 (la cinta que gira se estrecha) y 6 (en perspectiva, el grosor mengua con la profundidad).
+
 ## 9. Panel en pestañas
 
 - Al crecer los controles, el panel dejó de caber. Ahora:

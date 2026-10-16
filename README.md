@@ -18,6 +18,7 @@ Es de la misma familia que [Mesa de tangentes](https://github.com/meegl/mesa-de-
   - *Concéntricas:* los arcos comparten centro y los surcos interiores pueden quedar vivos.
   - *Mismo radio:* cada surco se redondea igual.
 - **Extremos** (inicio y fin por separado): escalonado con perfil recto, diagonal, punta, curva u ondas, variación al azar y remates de puntos o guiones. El inicio es el nodo redondo.
+- **Grosor variable:** en degradado de un surco a otro, o a lo largo de la guía con un grosor por nodo (entonces los surcos se exportan como formas rellenas).
 - **Fuga** (apertura por nodo): los surcos se juntan, se abren en abanico o convergen en un punto.
 - Los nodos pueden salir del papel para que las líneas sangren.
 - Deshacer y rehacer (`Ctrl+Z`), quitar selección (`Esc`), borrar nodo o pasada (`Supr`), guías (`G`).
