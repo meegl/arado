@@ -206,6 +206,14 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           <label class="inline" style="align-self:end;padding-bottom:6px"><input type="checkbox" id="snap">Imán</label>
         </div>
         <p class="hint">Con el imán, los nodos van a la rejilla y los radios a cuartos de celda. Los nodos pueden salir del papel para que las líneas sangren.</p>
+        <h3>Perspectiva</h3>
+        <label class="inline"><input type="checkbox" id="pon">Ver en perspectiva</label>
+        <div class="stack mt" id="pbox2">
+          <div class="sl" title="Altura del horizonte, desde arriba del papel"><span>Horizonte (mm)</span><input type="number" id="phyn" step="1"><input type="range" id="phy"></div>
+          <div class="sl" title="Posición horizontal del punto de fuga"><span>Fuga X (mm)</span><input type="number" id="pvxn" step="1"><input type="range" id="pvx"></div>
+          <div class="sl" title="Cuanto menor, más fuerte es el efecto"><span>Profundidad (mm)</span><input type="number" id="pdn" step="1" min="10"><input type="range" id="pd"></div>
+        </div>
+        <p class="hint">La composición se proyecta sobre un suelo que se aleja hacia el horizonte; el borde de abajo del papel no cambia. Se edita sobre el dibujo proyectado. Con perspectiva, los surcos se exportan como formas rellenas.</p>
         <h3>Capas visibles</h3>
         <label class="inline"><input type="checkbox" id="sPaper">Fondo de papel</label>
         <label class="inline"><input type="checkbox" id="sGrid">Rejilla</label>
@@ -395,7 +403,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         res.dots.push([p[0] + o[0] * s, p[1] + o[1] * s, w / 2]);
       } else {
         var dl = 3 * w, s0 = gap + i * (dl + gap), s1 = s0 + dl;
-        res.dashes.push({ w: w, d: 'M' + fmt(p[0] + o[0] * s0) + ' ' + fmt(p[1] + o[1] * s0) + 'L' + fmt(p[0] + o[0] * s1) + ' ' + fmt(p[1] + o[1] * s1) });
+        res.dashes.push({ w: w, a: [p[0] + o[0] * s0, p[1] + o[1] * s0], b: [p[0] + o[0] * s1, p[1] + o[1] * s1], d: 'M' + fmt(p[0] + o[0] * s0) + ' ' + fmt(p[1] + o[1] * s0) + 'L' + fmt(p[0] + o[0] * s1) + ' ' + fmt(p[1] + o[1] * s1) });
       }
     }
   }
@@ -825,7 +833,36 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     });
   }
 
-  return { build: build, clean: clean, cut: cut };
+  /* ---- perspectiva (fase 6) ----
+   * ring: el contorno cerrado de un surco (bordes a ± grosor/2 y terminaciones)
+   * como lista de puntos en el plano, para proyectarlo después punto a punto.
+   * ringD: ese contorno ya proyectado → trazado SVG suavizado. */
+  function ring(P, w, cap, c0, c1) {
+    P = P.filter(function (p, i, a) { return !i || Math.abs(p[0] - a[i - 1][0]) + Math.abs(p[1] - a[i - 1][1]) > 1e-6; });
+    var n = P.length, Lp = [], Rp = [], i;
+    if (n < 2) return null;
+    function hw(p) { return w * (p[2] == null ? 1 : p[2]) / 2; }
+    for (i = 0; i < n; i++) {
+      var p0 = P[Math.max(0, i - 1)], p2 = P[Math.min(n - 1, i + 1)], t = unit(p2[0] - p0[0], p2[1] - p0[1]), h = hw(P[i]);
+      Lp.push([P[i][0] - t[1] * h, P[i][1] + t[0] * h]); Rp.push([P[i][0] + t[1] * h, P[i][1] - t[0] * h]);
+    }
+    function capPts(c, tdir, h, from, isCut) { // puntos de la terminación, de un borde al otro
+      if (isCut || cap === 'butt' || h < 1e-6) return [];
+      if (cap === 'square') return [[from[0] + tdir[0] * h, from[1] + tdir[1] * h], [c[0] * 2 - from[0] + tdir[0] * h, c[1] * 2 - from[1] + tdir[1] * h]];
+      var a0 = Math.atan2(from[1] - c[1], from[0] - c[0]), out = [];
+      for (var m = 1; m < 8; m++) { var a = a0 - Math.PI * m / 8; out.push([c[0] + Math.cos(a) * h, c[1] + Math.sin(a) * h]); }
+      return out;
+    }
+    var t0 = unit(P[1][0] - P[0][0], P[1][1] - P[0][1]), t1 = unit(P[n - 1][0] - P[n - 2][0], P[n - 1][1] - P[n - 2][1]);
+    return Lp.concat(capPts(P[n - 1], t1, hw(P[n - 1]), Lp[n - 1], c1), Rp.reverse(), capPts(P[0], [-t0[0], -t0[1]], hw(P[0]), Rp[0], c0));
+  }
+  function ringD(Q) {
+    Q = rdp(Q, 0.12);
+    if (Q.length < 3) return '';
+    return 'M' + fmt(Q[0][0]) + ' ' + fmt(Q[0][1]) + smoothCmds(Q.concat([Q[0]])) + 'Z';
+  }
+
+  return { build: build, clean: clean, cut: cut, ring: ring, ringD: ringD };
 });
 
 /* Arado · exportador SVG (capas con nombre, para Illustrator o Affinity) */
@@ -849,7 +886,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     var k = o.mmW / o.W, s = o.show || {}, g = [];
     if (s.paper) g.push('<g id="fondo"><rect id="papel" width="' + n(o.W) + '" height="' + n(o.H) + '" fill="' + PAPER + '"/></g>');
     if (s.grid) {
-      g.push('<g id="rejilla" fill="none" stroke="' + GRID + '" stroke-width="' + n(0.12 / k) + '">' + gridLines(o).map(function (l) {
+      g.push('<g id="rejilla" fill="none" stroke="' + GRID + '" stroke-width="' + n(0.12 / k) + '">' + gridLines(o).map(o.gridT || function (l) { return l; }).map(function (l) {
         return '<line x1="' + n(l[0]) + '" y1="' + n(l[1]) + '" x2="' + n(l[2]) + '" y2="' + n(l[3]) + '"/>';
       }).join('') + '</g>');
     }
@@ -888,7 +925,7 @@ var FORMATS=[
 var GUIDE='#2B4BFF', WARN='#F06A1E';
 var S, hist=[], redo=[], mode='move', selP=-1, selN=-1, hover=null, drag=null, built=[], raf=0, saveT=0;
 
-function defaults(){return {fmt:'a4v',cols:12,snap:true,pasadas:[],show:{paper:true,grid:true,guides:true}}}
+function defaults(){return {fmt:'a4v',cols:12,snap:true,pasadas:[],show:{paper:true,grid:true,guides:true},persp:null}}
 var fresh=true;
 function load(){
   var d=defaults();
@@ -896,6 +933,7 @@ function load(){
     if(j&&Array.isArray(j.pasadas)&&FORMATS.some(function(f){return f.id===j.fmt})){
       fresh=false;d.fmt=j.fmt;d.cols=+j.cols||12;d.snap=!!j.snap;d.pasadas=j.pasadas;d.pasadas.forEach(fixExt);
       if(j.show)['paper','grid','guides'].forEach(function(k){if(k in j.show)d.show[k]=!!j.show[k]});
+      if(j.persp)d.persp=j.persp;
     }}catch(e){}
   return d;
 }
@@ -909,6 +947,32 @@ function H(){var f=fm();return W*f.h/f.w}
 function K(){return fm().w/W}           // mm por unidad
 function cell(){return W/S.cols}
 
+/* ---------- perspectiva (fase 6) ----------
+ * La composición es un suelo que se aleja: el borde de abajo del papel (y0) queda
+ * igual y hacia arriba todo mengua hacia el horizonte (hy) y el punto de fuga (vx).
+ * Un punto a una distancia yp por encima de y0 se escala por s = D / (D + yp).
+ * Es una homografía: las rectas siguen siendo rectas. */
+function persp(){if(!S.persp)S.persp={on:false,hy:H()*0.12,vx:W/2,D:H()*0.9};return S.persp}
+function pOn(){return !!(S.persp&&S.persp.on)}
+function pS(x,y){if(!pOn())return 1;var P=S.persp,yp=Math.max(H()-y,-0.9*P.D);return P.D/(P.D+yp)}
+function Pj(x,y){if(!pOn())return [x,y];var P=S.persp,s=pS(x,y),y0=H();return [P.vx+(x-P.vx)*s,P.hy+(y0-P.hy)*s]}
+function Ij(X,Y){if(!pOn())return [X,Y];var P=S.persp,y0=H(),s=Math.max(0.02,(Y-P.hy)/(y0-P.hy));return [P.vx+(X-P.vx)/s,y0-(P.D/s-P.D)]}
+function pBounds(){var HH=H();return {x0:-PB,x1:W+PB,y0:pOn()?-50*HH:-PB,y1:HH+PB}}
+// con perspectiva, cada surco (ya cortado por los cruces) pasa a ser su contorno proyectado
+function projectBuilt(){
+  if(!pOn())return;
+  built.forEach(function(b,i){
+    var cap=S.pasadas[i].cap||'butt';
+    b.lines.forEach(function(L){
+      var pcs=L.pieces||[{pts:L.pts,c0:false,c1:false}];
+      b.paths[L.pi]={fill:true,w:L.w,d:pcs.map(function(pc){var R=AR.ring(pc.pts,L.w,cap,pc.c0,pc.c1);return R?AR.ringD(R.map(function(p){return Pj(p[0],p[1])})):''}).join('')};
+    });
+    b.dots=b.dots.map(function(q){var c=Pj(q[0],q[1]);return [c[0],c[1],q[2]*pS(q[0],q[1])]});
+    b.dashes=b.dashes.map(function(x){var a=Pj(x.a[0],x.a[1]),e=Pj(x.b[0],x.b[1]),m=pS((x.a[0]+x.b[0])/2,(x.a[1]+x.b[1])/2);
+      return {w:x.w*m,a:a,b:e,d:'M'+a[0].toFixed(3)+' '+a[1].toFixed(3)+'L'+e[0].toFixed(3)+' '+e[1].toFixed(3)}});
+  });
+}
+
 var cv=document.getElementById('cv'), ctx=cv.getContext('2d'), stage=document.getElementById('stage');
 var $=function(id){return document.getElementById(id)};
 var scale=1, dpr=1;
@@ -919,6 +983,7 @@ function compute(){
   built=S.pasadas.map(function(pe){return AR.build(pe)});
   // cruces: cada pasada con hueco corta las que tiene debajo (las anteriores en la lista)
   S.pasadas.forEach(function(up,j){if(!(up.hueco>0))return;for(var i=0;i<j;i++)AR.cut(built[i],built[j],up.hueco)});
+  projectBuilt();
   var st=$('status'), np=0, folds=[];
   var iss=[];
   built.forEach(function(b,i){np+=b.paths.length;(b.issues||[]).forEach(function(t){iss.push('Pasada '+(i+1)+(t.i>=0?', nodo '+(t.i+1):'')+': '+t.msg)})});
@@ -938,7 +1003,8 @@ function resize(){
   cv.width=Math.round(w*dpr); cv.height=Math.round(th*scale*dpr);
   draw();
 }
-function opts(){var f=fm();return {W:W,H:H(),mmW:f.w,mmH:f.h,cols:S.cols,show:S.show,
+function gridT(l){var a=Pj(l[0],l[1]),b=Pj(l[2],l[3]);return [a[0],a[1],b[0],b[1]]}
+function opts(){var f=fm();return {W:W,H:H(),mmW:f.w,mmH:f.h,cols:S.cols,show:S.show,gridT:pOn()?gridT:null,
   pasadas:S.pasadas.map(function(pe,i){var b=built[i]||{paths:[],dots:[],dashes:[]};return {paths:b.paths,dots:b.dots,dashes:b.dashes,w:pe.w,cap:pe.cap}})}}
 function draw(){raf=0;paint(ctx,dpr*scale,false,false)}
 // ex: exportación (solo el papel)
@@ -947,7 +1013,7 @@ function paint(c,sc,ex,transp){
   c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,c.canvas.width,c.canvas.height);
   c.setTransform(sc,0,0,sc,off,off);
   if(!transp&&(sh.paper||!ex)){c.fillStyle=TGXPaper(sh.paper);c.fillRect(ex?0:-PB,ex?0:-PB,ex?W:W+2*PB,ex?HH:HH+2*PB)}
-  if(sh.grid){c.strokeStyle=AX.GRID;c.lineWidth=ex?0.12/K():px;c.beginPath();AX.gridLines(o).forEach(function(l){c.moveTo(l[0],l[1]);c.lineTo(l[2],l[3])});c.stroke()}
+  if(sh.grid){c.strokeStyle=AX.GRID;c.lineWidth=ex?0.12/K():px;c.beginPath();AX.gridLines(o).map(o.gridT||function(l){return l}).forEach(function(l){c.moveTo(l[0],l[1]);c.lineTo(l[2],l[3])});c.stroke()}
   c.strokeStyle=AX.INK; c.lineJoin='miter'; c.miterLimit=10;
   o.pasadas.forEach(function(pe){c.lineCap=pe.cap;c.fillStyle=AX.INK;
     pe.paths.concat(pe.dashes).forEach(function(p){var P=new Path2D(p.d);if(p.fill)c.fill(P,'nonzero');else{c.lineWidth=p.w;c.stroke(P)}});pe.dots.forEach(function(q){c.beginPath();c.arc(q[0],q[1],q[2],0,Math.PI*2);c.fill()})});
@@ -973,7 +1039,7 @@ function drawGuides(c,px){
     c.strokeStyle=GUIDE; c.fillStyle=GUIDE;
     c.globalAlpha=on?1:(hv?.8:.45);
     // polígono de control, con halo blanco para que se lea sobre la tinta
-    c.beginPath();pe.nodes.forEach(function(nd,j){if(j)c.lineTo(nd.x,nd.y);else c.moveTo(nd.x,nd.y)});
+    c.beginPath();pe.nodes.forEach(function(nd,j){var q=Pj(nd.x,nd.y);if(j)c.lineTo(q[0],q[1]);else c.moveTo(q[0],q[1])});
     c.strokeStyle='#fff';c.lineWidth=(on?3.4:2.6)*px;c.stroke();
     c.strokeStyle=GUIDE;c.lineWidth=(on?1.4:1)*px;c.setLineDash([5*px,4*px]);c.stroke();
     c.setLineDash([]);
@@ -981,14 +1047,15 @@ function drawGuides(c,px){
       // círculos de las esquinas y asas de radio
       b.spine.forEach(function(e){
         if(e.k!=='A')return;
-        if(e.r>1e-6){var bs=bisector(e),dc=e.r/Math.cos(e.phi/2);c.lineWidth=.8*px;c.setLineDash([2*px,3*px]);
-          c.beginPath();c.arc(e.v[0]+bs[0]*dc,e.v[1]+bs[1]*dc,e.r,0,Math.PI*2);c.stroke();c.setLineDash([])}
-        var h=handlePos(e,px);c.beginPath();c.arc(h[0],h[1],5*px,0,Math.PI*2);c.fill();
+        if(e.r>1e-6){var bs=bisector(e),dc=e.r/Math.cos(e.phi/2),cx=e.v[0]+bs[0]*dc,cy=e.v[1]+bs[1]*dc;c.lineWidth=.8*px;c.setLineDash([2*px,3*px]);
+          c.beginPath();for(var a=0;a<=48;a++){var q=Pj(cx+Math.cos(a/48*Math.PI*2)*e.r,cy+Math.sin(a/48*Math.PI*2)*e.r);if(a)c.lineTo(q[0],q[1]);else c.moveTo(q[0],q[1])}c.stroke();c.setLineDash([])}
+        var h=handlePos(e,px);h=Pj(h[0],h[1]);c.beginPath();c.arc(h[0],h[1],5*px,0,Math.PI*2);c.fill();
         c.strokeStyle='#fff';c.lineWidth=1.5*px;c.stroke();c.strokeStyle=GUIDE;
       });
     }
     // nodos
-    pe.nodes.forEach(function(nd,j){
+    pe.nodes.forEach(function(nd0,j){
+      var q0=Pj(nd0.x,nd0.y),nd={x:q0[0],y:q0[1]};
       var s=(on&&j===selN?6:4)*px, isH=hover&&hover.p===i&&hover.n===j;
       c.fillStyle=(on&&j===selN)?GUIDE:'#fff';c.lineWidth=1.4*px;
       // el primer nodo (inicio) es redondo
@@ -998,14 +1065,17 @@ function drawGuides(c,px){
       c.fillStyle=GUIDE;
     });
     // nodos que provocan una aberración: anillo naranja
-    if(b)(b.issues||[]).forEach(function(t){var nd=pe.nodes[t.i];if(!nd)return;
-      c.globalAlpha=1;c.strokeStyle='#fff';c.lineWidth=4.5*px;c.beginPath();c.arc(nd.x,nd.y,13*px,0,Math.PI*2);c.stroke();
+    if(b)(b.issues||[]).forEach(function(t){var nd=pe.nodes[t.i];if(!nd)return;var q=Pj(nd.x,nd.y);
+      c.globalAlpha=1;c.strokeStyle='#fff';c.lineWidth=4.5*px;c.beginPath();c.arc(q[0],q[1],13*px,0,Math.PI*2);c.stroke();
       c.strokeStyle=WARN;c.lineWidth=2.5*px;c.stroke();c.strokeStyle=GUIDE;c.globalAlpha=on?1:(hv?.8:.45)});
     // extremo por el que se sigue añadiendo
-    if(on&&mode==='add'&&pe.nodes.length){var t=selN===0&&pe.nodes.length>1?pe.nodes[0]:pe.nodes[pe.nodes.length-1];
-      c.lineWidth=1.2*px;c.beginPath();c.arc(t.x,t.y,10*px,0,Math.PI*2);c.stroke()}
+    if(on&&mode==='add'&&pe.nodes.length){var t=selN===0&&pe.nodes.length>1?pe.nodes[0]:pe.nodes[pe.nodes.length-1],tq=Pj(t.x,t.y);
+      c.lineWidth=1.2*px;c.beginPath();c.arc(tq[0],tq[1],10*px,0,Math.PI*2);c.stroke()}
   });
   c.globalAlpha=1;
+  // horizonte y punto de fuga
+  if(pOn()){var P=S.persp;c.strokeStyle=GUIDE;c.lineWidth=px;c.setLineDash([8*px,5*px]);c.beginPath();c.moveTo(-PB,P.hy);c.lineTo(W+PB,P.hy);c.stroke();c.setLineDash([]);
+    c.beginPath();c.moveTo(P.vx-7*px,P.hy-7*px);c.lineTo(P.vx+7*px,P.hy+7*px);c.moveTo(P.vx+7*px,P.hy-7*px);c.lineTo(P.vx-7*px,P.hy+7*px);c.stroke()}
 }
 function redraw(){if(!raf)raf=requestAnimationFrame(draw)}
 
@@ -1026,8 +1096,13 @@ function syncAll(){
   updHist();layersInfo();resize();changed();
 }
 var tab='pasada';
+function syncPersp(){
+  var k=K(),P=persp(),HH=H();$('pon').checked=!!P.on;$('pbox2').hidden=!P.on;
+  cfg('phy',0,(HH-10)*k,1,P.hy*k);cfg('pvx',-W*k,2*W*k,1,P.vx*k);cfg('pd',10*k,4*HH*k,1,P.D*k);
+}
 function syncPanel(){
   var k=K(), pe=S.pasadas[selP], need=tab!=='papel';
+  syncPersp();
   document.querySelectorAll('[data-tab]').forEach(function(b){b.setAttribute('aria-selected',b.dataset.tab===tab)});
   document.querySelectorAll('.tabp').forEach(function(p){p.hidden=p.dataset.panel!==tab||(need&&!pe)});
   $('nosel').hidden=!need||!!pe;
@@ -1047,7 +1122,7 @@ function syncPanel(){
   $('greset').hidden=!pe.nodes.some(function(nd){return nd.g!=null&&nd.g!==100});
   syncFuga(pe);
   if(nd){
-    cfg('nx',-PB*k,(W+PB)*k,0.1,nd.x*k);cfg('ny',-PB*k,(H()+PB)*k,0.1,nd.y*k);cfg('na',0,400,1,ap(nd),1);cfg('ng',0,400,1,nd.g==null?100:nd.g,1);cfg('nt',-360,360,1,nd.t||0,1);
+    cfg('nx',-PB*k,(W+PB)*k,0.1,nd.x*k);cfg('ny',pBounds().y0*k,(H()+PB)*k,0.1,nd.y*k);cfg('na',0,400,1,ap(nd),1);cfg('ng',0,400,1,nd.g==null?100:nd.g,1);cfg('nt',-360,360,1,nd.t||0,1);
     cfg('nq',-60,60,0.5,(nd.q||0)*k);cfg('nqe',-20,20,0.5,(nd.qe||0)*k);cfg('nql',0,40,0.5,(nd.ql||0)*k);
     var endN=selN===0||selN===pe.nodes.length-1;$('nqrow').hidden=endN;$('nqerow').hidden=$('nqlrow').hidden=endN||!nd.q;
     var arc=null,b=built[selP];if(b)b.spine.forEach(function(e){if(e.k==='A'&&b.ix[e.vi]===selN)arc=e});
@@ -1109,22 +1184,23 @@ function syncFuga(pe){
 function cfg(id,mn,mx,st,v,dec){var e=$(id),m=$(id+'n');e.min=mn;e.max=mx;e.step=st;e.value=v;m.max=mx;if(document.activeElement!==m)m.value=dec?Math.round(v):Math.round(v*100)/100}
 
 /* ---------- interacción ---------- */
-function toWorld(e){var r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/scale-PB,y:(e.clientY-r.top)/scale-PB}}
+// x, y: punto del plano (sin perspectiva); sx, sy: donde está en pantalla
+function toWorld(e){var r=cv.getBoundingClientRect(),sx=(e.clientX-r.left)/scale-PB,sy=(e.clientY-r.top)/scale-PB,q=Ij(sx,sy);return {x:q[0],y:q[1],sx:sx,sy:sy}}
 function snapPt(p){if(!S.snap)return p;var c=cell();return {x:Math.round(p.x/c)*c,y:Math.round(p.y/c)*c}}
 function snapR(r){r=Math.max(0,r);if(!S.snap)return r;var q=cell()/4;return Math.round(r/q)*q}
-function clampPt(p){return {x:Math.max(-PB,Math.min(W+PB,p.x)),y:Math.max(-PB,Math.min(H()+PB,p.y))}}
+function clampPt(p){var B=pBounds();return {x:Math.max(B.x0,Math.min(B.x1,p.x)),y:Math.max(B.y0,Math.min(B.y1,p.y))}}
 function px(){return 1/scale}
 function hitNode(p){
   var best=null,bd=8*px();
   // primero la pasada seleccionada, luego de arriba abajo
   var order=S.pasadas.map(function(_,i){return i}).reverse();if(selP>=0){order.splice(order.indexOf(selP),1);order.unshift(selP)}
-  order.forEach(function(i){S.pasadas[i].nodes.forEach(function(nd,j){var d=Math.hypot(p.x-nd.x,p.y-nd.y);if(d<bd){bd=d;best={p:i,n:j}}})});
+  order.forEach(function(i){S.pasadas[i].nodes.forEach(function(nd,j){var q=Pj(nd.x,nd.y),d=Math.hypot(p.sx-q[0],p.sy-q[1]);if(d<bd){bd=d;best={p:i,n:j}}})});
   return best;
 }
 function hitHandle(p){
   var b=built[selP];if(!b||!S.show.guides)return -1;
-  for(var i=0;i<b.spine.length;i++){var e=b.spine[i];if(e.k!=='A')continue;var h=handlePos(e,px());
-    if(Math.hypot(p.x-h[0],p.y-h[1])<=10*px())return b.ix[e.vi]}
+  for(var i=0;i<b.spine.length;i++){var e=b.spine[i];if(e.k!=='A')continue;var h=handlePos(e,px());h=Pj(h[0],h[1]);
+    if(Math.hypot(p.sx-h[0],p.sy-h[1])<=10*px())return b.ix[e.vi]}
   return -1;
 }
 function segDist(p,a,b){var dx=b.x-a.x,dy=b.y-a.y,l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/l)):0;
@@ -1132,7 +1208,8 @@ function segDist(p,a,b){var dx=b.x-a.x,dy=b.y-a.y,l=dx*dx+dy*dy,t=l?Math.max(0,M
 // tramo de guía más cercano dentro de tol (+ medio ancho de la pasada si wide)
 function hitSeg(p,wide){
   var best=null;
-  for(var i=S.pasadas.length-1;i>=0;i--){var pe=S.pasadas[i],tol=(wide?half(pe)+pe.w/2:0)+6*px();
+  var ps=pS(p.x,p.y)||1; // con perspectiva, los píxeles de tolerancia valen más en el plano cuanto más lejos
+  for(var i=S.pasadas.length-1;i>=0;i--){var pe=S.pasadas[i],tol=(wide?half(pe)+pe.w/2:0)+6*px()/ps;
     for(var j=0;j<pe.nodes.length-1;j++){var r=segDist(p,pe.nodes[j],pe.nodes[j+1]);if(r.d<=tol&&(!best||r.d<best.d))best={p:i,s:j,d:r.d,x:r.x,y:r.y}}}
   return best;
 }
@@ -1187,7 +1264,7 @@ cv.addEventListener('pointermove',function(e){
     // se mueve la pasada entera, con todos los valores de cada nodo (radio, apertura,
     // grosor, quiebro…); el desplazamiento se frena en el borde de la mesa para no deformarla
     var orig=JSON.parse(drag.orig),HH=H();
-    orig.forEach(function(nd){dx=Math.max(-PB-nd.x,Math.min(W+PB-nd.x,dx));dy=Math.max(-PB-nd.y,Math.min(HH+PB-nd.y,dy))});
+    var B=pBounds();orig.forEach(function(nd){dx=Math.max(B.x0-nd.x,Math.min(B.x1-nd.x,dx));dy=Math.max(B.y0-nd.y,Math.min(B.y1-nd.y,dy))});
     pe.nodes=orig.map(function(nd){nd.x+=dx;nd.y+=dy;return nd});
   }
   compute();syncPanel();redraw();
@@ -1242,7 +1319,7 @@ bindSl('pn',curP,function(pe,v){pe.n=Math.max(1,Math.min(400,Math.round(v)))});
 bindSl('ps',curP,function(pe,v){pe.sep=Math.max(0.05,v)/K()});
 bindSl('pw',curP,function(pe,v){pe.w=Math.max(0.02,v)/K()});
 bindSl('nx',curN,function(nd,v){nd.x=Math.max(-PB,Math.min(W+PB,v/K()))});
-bindSl('ny',curN,function(nd,v){nd.y=Math.max(-PB,Math.min(H()+PB,v/K()))});
+bindSl('ny',curN,function(nd,v){nd.y=Math.max(pBounds().y0,Math.min(H()+PB,v/K()))});
 // radio: el slider va al cuadrado (0..1000 → 0..nrMax mm); la casilla, en mm
 var nrMax=600;
 (function(){var e=$('nr'),m=$('nrn');
@@ -1252,6 +1329,11 @@ var nrMax=600;
   m.addEventListener('change',function(){apply(parseFloat(this.value),true)});
 })();
 document.querySelectorAll('[data-tab]').forEach(function(b){b.addEventListener('click',function(){tab=b.dataset.tab;syncPanel()})});
+function curPersp(){return persp()}
+$('pon').addEventListener('change',function(){pushHist();persp().on=this.checked;changed()});
+bindSl('phy',curPersp,function(P,v){P.hy=Math.max(0,Math.min(H()-10,v/K()))});
+bindSl('pvx',curPersp,function(P,v){P.vx=v/K()});
+bindSl('pd',curPersp,function(P,v){P.D=Math.max(10,v/K())});
 bindSl('nt',curN,function(nd,v){nd.t=Math.max(-360,Math.min(360,Math.round(v)))});
 bindSl('ph',curP,function(pe,v){pe.hueco=Math.max(0,v)/K()});
 $('pthin').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.thin=this.checked;changed()});

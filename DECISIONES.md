@@ -63,9 +63,8 @@ Hacer la base geométrica de carteles hechos con haces de líneas paralelas que 
 
 ## 6. Fases pendientes
 
-Hechas: **fase 1** (pasada básica), **fase 2** (extremos escalonados, §7), **fase 3** (abanico y fuga, §8), **fase 4** (quiebros, §8) y **fase 5** (giro 3D y cruces, §8). Pendientes:
+Hechas: **fase 1** (pasada básica), **fase 2** (extremos escalonados, §7), **fase 3** (abanico y fuga, §8), **fase 4** (quiebros, §8), **fase 5** (giro 3D y cruces, §8) y **fase 6** (perspectiva, §8). Todas las fases propuestas están hechas.
 
-6. **Perspectiva:** punto de fuga global; grosor y separación menguan con la profundidad. Referencia: cartel amarillo.
 
 ## 7. Extremos escalonados (fase 2)
 
@@ -161,6 +160,23 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
   - Una pasada que se cruza consigo misma no se corta; queda pendiente.
 - Referencias: Bienal de China (cinta que gira) y cartel amarillo (cruces).
 
+### Perspectiva (fase 6)
+
+- Es un ajuste de toda la composición (`S.persp`, en la pestaña Papel): **Ver en perspectiva**, **Horizonte** (altura desde arriba), **Fuga X** y **Profundidad** (D; cuanto menor, más fuerte).
+- **El modelo:** la composición es un suelo que se aleja. El borde de abajo del papel (y0) no cambia; un punto a una distancia yp = y0 − y por encima se escala por s = D / (D + yp) hacia el punto de fuga: X = vx + (x − vx)·s, Y = hy + (y0 − hy)·s.
+  - Es una homografía: las rectas siguen siendo rectas, y los arcos pasan a ser elipses.
+  - Al quitar la perspectiva se ve la composición plana tal cual: los nodos se guardan siempre en el plano.
+- **Se edita sobre el dibujo proyectado:**
+  - `toWorld` deshace la proyección del puntero (`Ij`). Los nodos, las asas, el polígono de control y los círculos de las esquinas se dibujan proyectados.
+  - Los nodos y las asas se buscan en pantalla. La tolerancia de los tramos se divide por la escala local, porque lejos un píxel vale más plano.
+  - Con perspectiva, los nodos pueden ir mucho más lejos hacia el horizonte (hasta −50 alturas de papel).
+  - En el lienzo se dibujan el horizonte (discontinuo) y una cruz en el punto de fuga.
+- **Dibujo (`projectBuilt`)**, después de los cortes de los cruces:
+  - Cada surco (o cada pieza cortada) pasa a ser su contorno en el plano (`AR.ring`, con sus terminaciones), se proyecta punto a punto y se suaviza (`AR.ringD`). Así el grosor mengua con la distancia, y por eso con perspectiva todo se exporta como **formas rellenas**.
+  - Los puntos se proyectan por el centro y escalan su radio. Los guiones, por sus extremos.
+  - La rejilla se proyecta también (en trapecio) y así se exporta, si está visible.
+- Referencia: el cartel amarillo de flechas.
+
 ### Avisos de aberraciones
 
 El usuario pidió que, si algo de lo que toca rompe el dibujo, el control se ponga en naranja. El programa no sabe si algo es feo, pero sí detecta los problemas geométricos que suelen dar aberraciones (`issues` en `AR`). Cada aviso lleva el nodo que lo provoca (o −1 si es de toda la pasada), los controles que hay que tocar (`ctl`) y un mensaje:
@@ -204,6 +220,8 @@ El usuario pidió que, si algo de lo que toca rompe el dibujo, el control se pon
 - Los remates siguen la tangente en línea recta, no la curva.
 - La apertura solo se edita con sliders; falta un asa en el lienzo para arrastrarla.
 - Los cruces de una pasada consigo misma no dejan hueco.
+- Con perspectiva, el asa del radio y los avisos se calculan en el plano, no en lo que se ve.
+- No hay asa en el lienzo para mover el horizonte ni el punto de fuga; se hace con las barras.
 - No hay aún **Aleatorio**.
 
 ## 11. Cómo se trabaja en el proyecto
