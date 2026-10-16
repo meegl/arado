@@ -217,6 +217,9 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           <div class="sl" title="Ancho del dibujo en el borde de arriba: cuanto menos, más se achata y se aleja"><span>Ancho arriba (%)</span><input type="number" id="ptn" step="1" min="2"><input type="range" id="pt" data-def="40"></div>
           <div class="sl" title="Altura del horizonte desde arriba del papel (negativo: por encima del papel)"><span>Horizonte (mm)</span><input type="number" id="phzn" step="1"><input type="range" id="phz"></div>
           <label class="inline"><input type="checkbox" id="phzauto">Horizonte automático (el dibujo llena el papel)</label>
+          <label class="inline"><input type="checkbox" id="pfold">Doblar hacia arriba (el suelo sube como una pared)</label>
+          <div class="sl" id="pfdrow" title="Altura del papel, desde abajo, a la que el suelo empieza a doblarse"><span>Doblez a (mm)</span><input type="number" id="pfdn" step="1" min="0"><input type="range" id="pfd"></div>
+          <div class="sl" id="pfrrow" title="Radio de la curva del doblez: 0 es un codo seco"><span>Radio del doblez (mm)</span><input type="number" id="pfrn" step="1" min="0"><input type="range" id="pfr" data-def="0"></div>
           <div class="sl" title="Hacia dónde convergen, a izquierda o derecha"><span>Fuga X (mm)</span><input type="number" id="pvxn" step="1"><input type="range" id="pvx"></div>
         </div>
         <p class="hint">La composición se proyecta sobre un suelo que se aleja: amplía la parte de abajo y estrecha la de arriba. Lo de abajo queda abajo del papel y lo de arriba, arriba. Se edita sobre el dibujo proyectado. Con perspectiva, los surcos se exportan como formas rellenas.</p>
@@ -972,22 +975,52 @@ function pOn(){return !!(S.persp&&S.persp.on&&S.persp.B!=null)}
  * escala horizontal λ(v) = 1/(p + q·v), con p = 1/T y q = 1/B − 1/T (λ(0)=T, λ(1)=B);
  * X = vx + (x − vx)·λ;  Y = H·v·λ/B (Y(0)=0, Y(1)=H). Las rectas siguen rectas. */
 function pPQ(){var P=S.persp;return {p:1/P.T,q:1/P.B-1/P.T}}
-function pS(x,y){if(!pOn())return 1;var c=pPQ(),d=c.p+c.q*(y/H());return 1/Math.max(d,0.02)}
+/* doblez: más allá de una distancia (fd) del borde de abajo, el suelo se curva hacia
+ * arriba con radio fr y sigue como una pared vertical. Un punto del plano a una
+ * distancia t pasado el doblez queda a profundidad ye y a altura h (en unidades del plano). */
+// fd y fr se dan como se ven en el papel (altura del doblez sobre el borde de abajo y
+// radio); aquí se pasan al plano con la inversa del suelo sin doblez
+function pFloorY(Y){var P=S.persp,HH=H(),c=pPQ(),hz=pHorizon(),l,v;
+  if(hz!=null&&hz<HH)Y=Math.max(Y,hz+0.5);
+  if(pManual()){l=Math.max(0.02,(Y-P.hz)*P.B/(HH-P.hz));v=(1/l-c.p)/c.q}
+  else if(Math.abs(c.q)>1e-9)v=Y*P.B*c.p/(HH-Y*P.B*c.q);
+  else v=Y/HH;
+  return v*HH}
+function pFold(y){var P=S.persp;if(!P||!P.fold)return {ye:y,h:0};
+  var yf=pFloorY(H()-(P.fd||0)),R=Math.max(0,P.fr||0)/pLam(yf),t=yf-y;
+  if(t<=0)return {ye:y,h:0};
+  if(R>1e-6&&t<Math.PI*R/2)return {ye:yf-R*Math.sin(t/R),h:R*(1-Math.cos(t/R))};
+  return {ye:yf-R,h:R+t-(R>1e-6?Math.PI*R/2:0)}}
+// con perspectivas fuertes, justo por debajo del papel el suelo crecería sin límite:
+// se limita a dos veces el ancho de abajo (eso queda fuera del papel)
+function pLam(ye){var c=pPQ();return 1/Math.max(c.p+c.q*(ye/H()),0.02,(c.p+c.q)/2)}
+function pS(x,y){if(!pOn())return 1;return pLam(pFold(y).ye)}
 // horizonte: la Y a la que tiende el suelo muy lejos. Automático (hz == null): el que
 // hace que lo de arriba de la composición quede arriba del papel; manual: P.hz.
 // En los dos casos, Y = hz + (H − hz)·λ/B (con λ = B el borde de abajo queda abajo).
 function pManual(){var P=S.persp,c=pPQ();return P.hz!=null&&Math.abs(c.q)>1e-9}
 function pHorizon(){var P=S.persp,c=pPQ();if(pManual())return P.hz;return Math.abs(c.q)>1e-9?H()/(P.B*c.q):null}
-function Pj(x,y){if(!pOn())return [x,y];var P=S.persp,l=pS(x,y),HH=H();
-  if(!pManual())return [P.vx+(x-P.vx)*l,HH*(y/HH)*l/P.B];
-  return [P.vx+(x-P.vx)*l,P.hz+(HH-P.hz)*l/P.B]}
+// Y en pantalla de un punto del suelo (a profundidad ye) levantado h: en una cámara real,
+// la altura sube h·λ (la misma escala que en horizontal)
+function pY(ye,h){var P=S.persp,l=pLam(ye),hz=pHorizon(),HH=H();return (hz==null?ye*l/P.B:hz+(HH-hz)*l/P.B)-h*l}
+function Pj(x,y){if(!pOn())return [x,y];var P=S.persp,f=pFold(y),l=pLam(f.ye);return [P.vx+(x-P.vx)*l,pY(f.ye,f.h)]}
 function Ij(X,Y){if(!pOn())return [X,Y];var P=S.persp,HH=H(),c=pPQ(),hz=pHorizon(),v,l;
+  if(P.fold){
+    // con doblez no hay fórmula cerrada: Y crece siempre con y, así que se busca por bisección
+    var lo=-50*HH,hi=HH+PB;
+    for(var it=0;it<50;it++){var m=(lo+hi)/2,f=pFold(m);if(pY(f.ye,f.h)<Y)lo=m;else hi=m}
+    var y=(lo+hi)/2;l=pLam(pFold(y).ye);return [P.vx+(X-P.vx)/l,y];
+  }
   if(hz!=null&&hz<HH)Y=Math.max(Y,hz+0.5);
   if(pManual()){l=Math.max(0.02,(Y-P.hz)*P.B/(HH-P.hz));v=(1/l-c.p)/c.q}
   else{v=Y*P.B*c.p/(HH-Y*P.B*c.q);l=1/Math.max(c.p+c.q*v,0.02)}
   return [P.vx+(X-P.vx)/l,v*HH]}
 // con perspectiva, el suelo llega mucho más lejos a los lados y hacia el fondo
 function pBounds(){var HH=H();return pOn()?{x0:-50*W,x1:51*W,y0:-50*HH,y1:HH+PB}:{x0:-PB,x1:W+PB,y0:-PB,y1:HH+PB}}
+// rellena de puntos una polilínea (un tramo recto largo solo trae sus dos extremos, y la
+// perspectiva y el doblez curvan lo de en medio)
+function dense(P){var out=[P[0]];for(var i=0;i<P.length-1;i++){var a=P[i],b=P[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.min(600,Math.max(1,Math.ceil(l/5)));
+  for(var j=1;j<=n;j++){var t=j/n;out.push(a.map(function(v,k){return v+((b[k]==null?v:b[k])-v)*t}))}}return out}
 // con perspectiva, cada surco (ya cortado por los cruces) pasa a ser su contorno proyectado
 function projectBuilt(){
   if(!pOn())return;
@@ -995,7 +1028,7 @@ function projectBuilt(){
     var cap=S.pasadas[i].cap||'butt';
     b.lines.forEach(function(L){
       var pcs=L.pieces||[{pts:L.pts,c0:false,c1:false}];
-      b.paths[L.pi]={fill:true,w:L.w,d:pcs.map(function(pc){var R=AR.ring(pc.pts,L.w,cap,pc.c0,pc.c1);return R?AR.ringD(R.map(function(p){return Pj(p[0],p[1])})):''}).join('')};
+      b.paths[L.pi]={fill:true,w:L.w,d:pcs.map(function(pc){var R=AR.ring(dense(pc.pts),L.w,cap,pc.c0,pc.c1);return R?AR.ringD(R.map(function(p){return Pj(p[0],p[1])})):''}).join('')};
     });
     b.dots=b.dots.map(function(q){var c=Pj(q[0],q[1]);return [c[0],c[1],q[2]*pS(q[0],q[1])]});
     b.dashes=b.dashes.map(function(x){var a=Pj(x.a[0],x.a[1]),e=Pj(x.b[0],x.b[1]),m=pS((x.a[0]+x.b[0])/2,(x.a[1]+x.b[1])/2);
@@ -1137,7 +1170,8 @@ var tab='pasada';
 function syncPersp(){
   var k=K(),P=persp(),HH=H();$('pon').checked=!!P.on;$('pbox2').hidden=!P.on;
   cfg('pb',10,400,1,Math.round(P.B*100),1);cfg('pt',2,150,1,Math.round(P.T*100),1);
-  var hz=P.on?pHorizon():null;cfg('phz',-HH*k,(HH-10)*k,1,hz==null?-HH*k:hz*k);$('phzauto').checked=P.hz==null;cfg('pvx',-W*k,2*W*k,1,P.vx*k);
+  var hz=P.on?pHorizon():null;cfg('phz',-HH*k,(HH-10)*k,1,hz==null?-HH*k:hz*k);$('phzauto').checked=P.hz==null;
+  $('pfold').checked=!!P.fold;$('pfdrow').hidden=$('pfrrow').hidden=!P.fold;cfg('pfd',0,HH*k,1,(P.fd||0)*k);cfg('pfr',0,HH*k/2,1,(P.fr||0)*k);cfg('pvx',-W*k,2*W*k,1,P.vx*k);
 }
 function syncPanel(){
   var k=K(), pe=S.pasadas[selP], need=tab!=='papel';
@@ -1374,6 +1408,9 @@ bindSl('pb',curPersp,function(P,v){P.B=Math.max(0.1,Math.min(4,v/100))});
 bindSl('pt',curPersp,function(P,v){P.T=Math.max(0.02,Math.min(1.5,v/100))});
 bindSl('pvx',curPersp,function(P,v){P.vx=v/K()});
 bindSl('phz',curPersp,function(P,v){P.hz=Math.max(-H(),Math.min(H()-10,v/K()))});
+$('pfold').addEventListener('change',function(){var P=persp();pushHist();P.fold=this.checked;if(P.fold&&P.fd==null){P.fd=H()*0.4;P.fr=cell()}changed()});
+bindSl('pfd',curPersp,function(P,v){P.fd=Math.max(0,v/K())});
+bindSl('pfr',curPersp,function(P,v){P.fr=Math.max(0,v/K())});
 $('phzauto').addEventListener('change',function(){var P=persp();pushHist();if(this.checked)P.hz=null;else{var h=pHorizon();P.hz=h==null?-H()*0.3:h}changed()});
 bindSl('nt',curN,function(nd,v){nd.t=Math.max(-360,Math.min(360,Math.round(v)))});
 bindSl('plej',curP,function(pe,v){pe.lejos=Math.max(3,Math.min(100,Math.round(v)))});

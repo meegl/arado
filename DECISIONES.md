@@ -196,6 +196,14 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
   - Cada surco (o cada pieza cortada) pasa a ser su contorno en el plano (`AR.ring`, con sus terminaciones), se proyecta punto a punto y se suaviza (`AR.ringD`). Por eso, con perspectiva, todo se exporta como **formas rellenas**.
   - Los puntos se proyectan por el centro y escalan su radio por λ. Los guiones, por sus extremos.
   - La rejilla cubre un suelo mucho mayor que el papel (de −4 a 5 anchos y hasta 4 alturas de fondo), se proyecta y así se exporta, si está visible.
+- **Doblar hacia arriba** (`fold`): a cierta altura del papel, el suelo se curva y sube como una pared vertical (referencia: el cartel del 11.º Festival de Cine por los Derechos de las Mujeres, 2017).
+  - **Doblez a (mm)** (`fd`): altura del papel, desde abajo, a la que empieza el doblez. **Radio del doblez (mm)** (`fr`): 0 es un codo seco.
+  - Los dos se dan **como se ven en el papel** y se pasan al plano con la inversa del suelo (`pFloorY`) y la escala en el doblez. *En una primera versión se daban en el plano y, con perspectiva fuerte, el doblez caía fuera del papel.*
+  - Un punto a una distancia t más allá del doblez queda a profundidad ye y altura h: en el arco, ye = yf − R·sin(t/R) y h = R·(1 − cos(t/R)); después, pared (ye fijo, h crece).
+  - En pantalla, Y = (Y del suelo a esa profundidad) − h·λ: la altura sube con la misma escala que el ancho, así que en la pared los surcos son verticales y paralelos.
+  - Con doblez no hay inversa cerrada: `Ij` busca por bisección (Y crece siempre con y).
+- **Tope bajo el papel:** con perspectivas fuertes, justo por debajo del borde de abajo el suelo crecería sin límite; λ se limita a 2·B (queda fuera del papel).
+- **Densificar antes de proyectar:** un surco recto solo guarda sus dos extremos, así que `dense` lo rellena de puntos cada 5 unidades antes de proyectarlo. *Sin esto, el doblez y la convergencia desaparecían y el surco salía como una recta.*
 - Para que una sola pasada se aleje, sin proyectar todo, está **Alejarse** (arriba).
 
 ### Avisos de aberraciones
