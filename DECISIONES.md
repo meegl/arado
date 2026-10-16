@@ -115,7 +115,11 @@ Cada extremo (**Inicio** y **Fin**) tiene sus propios ajustes, que se editan de 
   - En el lienzo se marca con un **anillo rojo** (aunque la pasada no esté seleccionada).
   - La barra de estado dice qué pasada, qué nodo y cuánta apertura cabe.
   - En la pestaña Fuga, su fila sale en rojo con «máx X %».
-- **Ajustar a la curva** (pestaña Fuga) baja la apertura de esos nodos al 97 % de lo que cabe. Repite hasta cuatro veces por si al cambiar uno cambia otro.
+- **Ajustar a la curva** (pestaña Fuga, `fitPasada`):
+  1. **Sube el radio** de cada curva donde no cabe la pasada, lo justo para que quepa entera: medio ancho · apertura aparente + medio grosor, con un 4 % de margen.
+  2. Si los tramos no dan para ese radio (el radio efectivo se recorta), **baja la apertura** solo hasta lo que cabe (97 %), repitiendo hasta cuatro veces.
+  - *Antes solo bajaba la apertura, y en curvas de radio pequeño dejaba la pasada casi en una línea (por ejemplo, al 8 %). El usuario lo notó. Con el radio primero, en el mismo caso queda al 100 % si hay sitio, o al 61 % con un tramo muy corto.*
+  - El aleatorio usa el mismo ajuste.
 - Origen: una pasada de 85 mm de ancho en un giro de 136° cuyo radio real se quedaba en 13 mm. Los surcos de dentro no cabían y salían pinchos, ganchos y trozos perdidos. El usuario lo había resuelto a mano bajando la apertura en ese nodo, y el botón hace lo mismo.
 
 ### Grosor variable

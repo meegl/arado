@@ -212,7 +212,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         </div>
         <div class="btns">
           <button id="freset">Todo al 100 %</button>
-          <button id="fajust" class="primary" title="Baja la apertura de los nodos marcados en rojo lo justo para que la pasada quepa en la curva">Ajustar a la curva</button>
+          <button id="fajust" class="primary" title="Sube el radio de las curvas marcadas para que quepa la pasada entera; si no hay sitio, baja la apertura solo lo que falte">Ajustar a la curva</button>
         </div>
         <p class="hint" id="finfo"></p>
       </div>
@@ -1461,11 +1461,19 @@ $('greset').addEventListener('click',function(){var pe=curP();if(!pe)return;push
 bindSl('na',curN,function(nd,v){nd.a=Math.max(0,Math.min(400,Math.round(v)))});
 $('ftr').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.tr=this.value;changed()});
 function setAp(fn){var pe=curP();if(!pe)return;pushHist();pe.nodes.forEach(fn);changed()}
+/* ajustar a la curva: primero sube el radio de cada curva donde no cabe la pasada, lo
+ * justo para que quepa entera (medio ancho · apertura aparente + medio grosor); si los
+ * tramos no dan para ese radio, baja la apertura solo lo que falte */
+function fitPasada(pe){
+  var b=AR.build(pe);if(!b.tight||!b.tight.length)return;
+  var hw=(Math.max(1,pe.n)-1)/2*pe.sep,wmax=Math.max(pe.w,pe.w*((pe.wl==null?100:pe.wl)/100));
+  b.tight.forEach(function(t){var nd=pe.nodes[t.i],ae=ap(nd)/100*Math.abs(Math.cos((nd.t||0)*Math.PI/180)),g=(nd.g==null?100:nd.g)/100;
+    nd.r=Math.max(nd.r||0,(hw*ae+wmax*g/2)*1.04)});
+  b=AR.build(pe);
+  for(var it=0;it<4&&b.tight&&b.tight.length;it++){b.tight.forEach(function(t){pe.nodes[t.i].a=Math.max(0,Math.floor(t.amax*0.97))});b=AR.build(pe)}
+}
 $('fajust').addEventListener('click',function(){
-  // baja la apertura de cada nodo que no cabe hasta el máximo que cabe (con un poco de margen)
-  var pe=curP(),b=built[selP];if(!pe||!b||!b.tight.length)return;pushHist();
-  for(var it=0;it<4&&b.tight.length;it++){b.tight.forEach(function(t){pe.nodes[t.i].a=Math.max(0,Math.floor(t.amax*0.97))});b=AR.build(pe)}
-  changed();
+  var pe=curP(),b=built[selP];if(!pe||!b||!b.tight.length)return;pushHist();fitPasada(pe);changed();
 });
 $('freset').addEventListener('click',function(){setAp(function(nd){nd.a=100})});
 /* extremos: se edita uno (inicio o fin) cada vez */
@@ -1615,7 +1623,7 @@ var RECETAS={
 // cuenta los avisos de la composición actual, después de intentar ajustarla a las curvas
 function fitAndCount(){
   compute();
-  built.forEach(function(b,i){var pe=S.pasadas[i];for(var it=0;it<4&&b.tight&&b.tight.length;it++){b.tight.forEach(function(t){pe.nodes[t.i].a=Math.max(0,Math.floor(t.amax*0.97))});b=AR.build(pe)}});
+  S.pasadas.forEach(fitPasada);
   compute();
   var nI=0;built.forEach(function(b){nI+=(b.issues||[]).length});return nI;
 }
