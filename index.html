@@ -164,14 +164,12 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
       </div>
 
       <div class="tabp" data-panel="fuga" id="fbox" hidden>
-        <p class="hint" style="margin-top:0">Cada nodo tiene una <b>apertura</b>: el porcentaje de la separación que tienen los surcos al pasar por él. Entre dos nodos, los surcos se juntan o se abren poco a poco.</p>
+        <p class="hint" style="margin-top:0">Cada nodo tiene una <b>apertura</b>: el porcentaje de la separación que tienen los surcos al pasar por él. Entre dos nodos, los surcos se juntan o se abren poco a poco. Con 0 % en un nodo, todos los surcos pasan por el mismo punto.</p>
         <div class="stack mt" id="flist"></div>
         <div class="row mt">
           <label>Transición<select id="ftr"><option value="suave">Suave</option><option value="recta">Lineal</option></select></label>
         </div>
         <div class="btns">
-          <button id="fend" title="Apertura 0 % en el último nodo">Converger al final</button>
-          <button id="fini" title="Apertura 0 % en el primer nodo">Converger al inicio</button>
           <button id="freset">Todo al 100 %</button>
           <button id="fajust" class="primary" title="Baja la apertura de los nodos marcados en rojo lo justo para que la pasada quepa en la curva">Ajustar a la curva</button>
         </div>
@@ -945,8 +943,6 @@ document.querySelectorAll('[data-tab]').forEach(function(b){b.addEventListener('
 bindSl('na',curN,function(nd,v){nd.a=Math.max(0,Math.min(400,Math.round(v)))});
 $('ftr').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.tr=this.value;changed()});
 function setAp(fn){var pe=curP();if(!pe)return;pushHist();pe.nodes.forEach(fn);changed()}
-$('fend').addEventListener('click',function(){var pe=curP();if(pe)setAp(function(nd,j){if(j===pe.nodes.length-1)nd.a=0})});
-$('fini').addEventListener('click',function(){setAp(function(nd,j){if(j===0)nd.a=0})});
 $('fajust').addEventListener('click',function(){
   // baja la apertura de cada nodo que no cabe hasta el máximo que cabe (con un poco de margen)
   var pe=curP(),b=built[selP];if(!pe||!b||!b.tight.length)return;pushHist();

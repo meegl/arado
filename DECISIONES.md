@@ -96,7 +96,8 @@ Cada extremo (**Inicio** y **Fin**) tiene sus propios ajustes, que se editan de 
 - Cada nodo tiene una **apertura** (`nd.a`, en %, 100 por defecto, de 0 a 400). Es el factor por el que se multiplica la distancia de cada surco a la guía cuando la pasada pasa por ese nodo.
 - **Dónde está cada nodo en la guía:** los extremos, al principio y al final; un nodo con esquina ocupa **todo su arco**; uno sin esquina, la unión de sus tramos. La apertura es fija mientras dura el arco y solo cambia en las rectas de entre medias, con una **transición** suave (smoothstep, por defecto) o lineal (`pasada.tr`).
   - *Antes el nodo era el punto medio del arco y la apertura cambiaba también dentro de la curva. Donde la guía pasa de recta a curva, el surco de dentro doblaba de golpe y hacía un codo. Con la apertura fija en el arco y la transición suave (que empieza y acaba sin pendiente), el empalme queda sin codos. Con la transición lineal aún puede verse un codo pequeño.*
-- **Converger en un punto** es apertura 0 en el último (o el primer) nodo; hay botones para hacerlo, y otro para volver todo al 100 %.
+- **Converger en un punto** es poner la apertura de un nodo a 0 %. Hay un botón para volver todo al 100 %.
+  - *Había botones «Converger al final / al inicio», pero solo ponían a 0 % el primer o el último nodo, que ya se hace con su barra. Se quitaron.*
 - **Geometría (`fanMaker`):**
   - Solo se usa si algún nodo no está al 100 %; si no, los surcos siguen siendo rectas y arcos exactos.
   - Se muestrea la guía (cada 4 unidades en las rectas y cada 3° en los arcos, también en las esquinas de radio 0), y cada muestra se desplaza por su normal: distancia × apertura.
