@@ -160,6 +160,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           <button id="fend" title="Apertura 0 % en el último nodo">Converger al final</button>
           <button id="fini" title="Apertura 0 % en el primer nodo">Converger al inicio</button>
           <button id="freset">Todo al 100 %</button>
+          <button id="fajust" class="primary" title="Baja la apertura de los nodos marcados en rojo lo justo para que la pasada quepa en la curva">Ajustar a la curva</button>
         </div>
         <p class="hint" id="finfo"></p>
       </div>
@@ -261,8 +262,10 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         var u2 = segs[i + 1].u, n2 = [-u2[1], u2[0]];
         var s = (nr[0] * u2[0] + nr[1] * u2[1]) >= 0 ? 1 : -1; // lado del centro
         var r = c.tn > 1e-9 ? c.t / c.tn : 0;
+        // room: tramo libre a cada lado del arco (para saber hasta dónde cabe una esquina viva)
+        var room = Math.min(segs[i].L - (i > 0 ? cor[i - 1].t : 0), segs[i + 1].L - (i + 2 < n - 1 ? cor[i + 1].t : 0)) - c.t;
         els.push({ k: 'A', r: r, s: s, sw: c.cr > 0 ? 1 : 0, a: B, b: add(P[i + 1], mul(u2, c.t)), c: add(B, mul(nr, r * s)),
-          n1: nr, n2: n2, v: P[i + 1], vi: i + 1, phi: c.phi });
+          n1: nr, n2: n2, v: P[i + 1], vi: i + 1, phi: c.phi, room: Math.max(0, room), tn: c.tn });
       }
     }
     return els;
@@ -400,7 +403,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         var L = Math.sqrt((e.b[0] - e.a[0]) * (e.b[0] - e.a[0]) + (e.b[1] - e.a[1]) * (e.b[1] - e.a[1])), N = Math.max(1, Math.ceil(L / STEP));
         for (i = S.length ? 1 : 0; i <= N; i++) S.push({ p: [e.a[0] + (e.b[0] - e.a[0]) * i / N, e.a[1] + (e.b[1] - e.a[1]) * i / N], n: e.n, s: pos + L * i / N });
         pos += L;
-        if (!(e.seg + 1 in at)) at[e.seg + 1] = pos; // vértice sin esquina: al final de su tramo
+        if (!(e.seg + 1 in at)) at[e.seg + 1] = [pos, pos]; // vértice sin esquina: al final de su tramo
       } else {
         var sg = (e.n1[0] * e.n2[1] - e.n1[1] * e.n2[0]) >= 0 ? 1 : -1, La = e.r * e.phi;
         var M = Math.max(2, Math.ceil(e.phi / ASTEP), Math.ceil(La / STEP));
@@ -408,22 +411,28 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           var nn = rot(e.n1, sg * e.phi * i / M);
           S.push({ p: [e.c[0] - e.s * e.r * nn[0], e.c[1] - e.s * e.r * nn[1]], n: nn, s: pos + La * i / M });
         }
-        at[e.vi] = pos + La / 2; pos += La;
+        at[e.vi] = [pos, pos + La]; pos += La; // la apertura se mantiene en todo el arco
       }
     });
-    var last = cl.P.length - 1, sN = [], aN = [];
-    for (j = 0; j <= last; j++) { sN.push(j === 0 ? 0 : j === last ? pos : at[j]); aN.push(cl.A[j] / 100); }
+    // cada nodo ocupa un tramo de la guía [a, b]: su arco entero (o un punto).
+    // La apertura es fija dentro y cambia solo en las rectas de entre medias; con
+    // la transición suave, el cambio empieza y acaba sin pendiente y los surcos no
+    // hacen codo al pasar de recta a curva
+    var last = cl.P.length - 1, iv = [], aN = [];
+    for (j = 0; j <= last; j++) { iv.push(j === 0 ? [0, 0] : j === last ? [pos, pos] : at[j]); aN.push(cl.A[j] / 100); }
     function apAt(s) {
-      for (var q = 0; q < last; q++) {
-        if (s <= sN[q + 1] || q === last - 1) {
-          var span = sN[q + 1] - sN[q], t = span > 1e-9 ? Math.max(0, Math.min(1, (s - sN[q]) / span)) : 1;
+      for (var q = 0; q <= last; q++) {
+        if (s <= iv[q][1] + 1e-9) {
+          if (q === 0 || s >= iv[q][0] - 1e-9) return aN[q];
+          var a0 = iv[q - 1][1], span = iv[q][0] - a0, t = span > 1e-9 ? Math.max(0, Math.min(1, (s - a0) / span)) : 1;
           if (tr !== 'recta') t = t * t * (3 - 2 * t);
-          return aN[q] + (aN[q + 1] - aN[q]) * t;
+          return aN[q - 1] + (aN[q] - aN[q - 1]) * t;
         }
       }
-      return aN[0];
+      return aN[last];
     }
-    S.forEach(function (q) { q.f = apAt(q.s); });
+    var fmax = 0;
+    S.forEach(function (q) { q.f = apAt(q.s); fmax = Math.max(fmax, q.f); });
     return function (d) {
       // solo se guardan los puntos que avanzan en el sentido de la guía: cuando
       // un surco interior queda más lejos que el radio de la curva, su paralela
@@ -435,14 +444,16 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         var q = S[m], o = Q[m - 1];
         return (p[0] - o[0]) * q.n[1] - (p[1] - o[1]) * q.n[0] > 1e-9;
       });
-      P = unloop(P);
+      P = unloop(P, 2 * Math.PI * Math.abs(d) * fmax + 4 * STEP);
       var out = [];
       for (var m = 0; m < P.length - 1; m++) out.push({ k: 'L', a: P[m], b: P[m + 1] });
       return out;
     };
   }
   // corta los bucles que hacen los surcos interiores en las esquinas cerradas
-  function unloop(P) {
+  // maxLen: lo más largo que se puede quitar de una vez; así solo se cortan los
+  // bucles pequeños de las esquinas y nunca un trozo grande de surco
+  function unloop(P, maxLen) {
     function hit(a, b, c, d) {
       var r = [b[0] - a[0], b[1] - a[1]], s = [d[0] - c[0], d[1] - c[1]], den = r[0] * s[1] - r[1] * s[0];
       if (Math.abs(den) < 1e-12) return null;
@@ -451,10 +462,14 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     }
     P = P.slice();
     for (var i = 0; i < P.length - 3; i++) {
-      for (var j = Math.min(P.length - 2, i + 600); j >= i + 2; j--) {
+      var len = 0, best = -1, bx = null;
+      for (var j = i + 2; j < P.length - 1; j++) {
+        len += Math.sqrt((P[j][0] - P[j - 1][0]) * (P[j][0] - P[j - 1][0]) + (P[j][1] - P[j - 1][1]) * (P[j][1] - P[j - 1][1]));
+        if (len > maxLen) break;
         var X = hit(P[i], P[i + 1], P[j], P[j + 1]);
-        if (X) { P.splice(i + 1, j - i, X); break; }
+        if (X) { best = j; bx = X; }
       }
+      if (best > 0) P.splice(i + 1, best - i, bx);
     }
     return P;
   }
@@ -513,6 +528,17 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
       decos(xi, a.a, [-da[0], -da[1]], pe.w, res);
       decos(xf, z.b, dz, pe.w, res);
     }
+    // ¿cabe la pasada en cada curva? Con radio, todos los surcos deben girar en
+    // arco (d + w/2 ≤ r); sin radio (esquina viva), la esquina del surco de
+    // dentro debe caer dentro de sus tramos. amax: la apertura máxima que cabe.
+    var hw = (n - 1) / 2 * pe.sep;
+    res.tight = [];
+    if (hw > 1e-9 && (fan || pe.mode !== 'igual')) res.spine.forEach(function (e) {
+      if (e.k !== 'A') return;
+      var dmax = e.r > 1e-6 ? e.r - pe.w / 2 : (e.tn > 1e-9 ? e.room / e.tn : Infinity);
+      var amax = Math.max(0, dmax / hw * 100), a = c.A[e.vi];
+      if (a > amax + 0.5) res.tight.push({ i: c.ix[e.vi], amax: Math.floor(amax) });
+    });
     return res;
   }
 
@@ -572,7 +598,7 @@ var FORMATS=[
   {id:'sq',label:'Cuadrado · 200×200 mm',w:200,h:200},
   {id:'p50',label:'Póster 50×70 cm',w:500,h:700}
 ];
-var GUIDE='#2B4BFF';
+var GUIDE='#2B4BFF', WARN='#E0301E';
 var S, hist=[], redo=[], mode='move', selP=-1, selN=-1, hover=null, drag=null, built=[], raf=0, saveT=0;
 
 function defaults(){return {fmt:'a4v',cols:12,snap:true,pasadas:[],show:{paper:true,grid:true,guides:true}}}
@@ -605,8 +631,10 @@ function half(pe){var m=1;pe.nodes.forEach(function(nd){m=Math.max(m,ap(nd)/100)
 function compute(){
   built=S.pasadas.map(function(pe){return AR.build(pe)});
   var st=$('status'), np=0, folds=[];
-  built.forEach(function(b,i){np+=b.paths.length;if(b.fold)folds.push(i+1)});
+  var tight=[];
+  built.forEach(function(b,i){np+=b.paths.length;if(b.fold)folds.push(i+1);(b.tight||[]).forEach(function(t){tight.push('pasada '+(i+1)+', nodo '+(t.i+1)+' (cabe hasta '+t.amax+' %)')})});
   if(!S.pasadas.length){st.textContent='Sin pasadas. Pulsa «Nueva pasada» y haz clic en el lienzo para trazar la guía.';st.className='status mono'}
+  else if(tight.length){st.textContent='No cabe en la curva: '+tight.join('; ')+'. Usa «Ajustar a la curva» en la pestaña Fuga, sube el radio o separa los nodos.';st.className='status mono warn'}
   else if(folds.length){st.textContent='Pasada '+folds.join(', ')+': los surcos interiores se pliegan en una esquina. Separa los nodos o estrecha la pasada.';st.className='status mono warn'}
   else{st.textContent=S.pasadas.length+' pasada'+(S.pasadas.length===1?'':'s')+' · '+np+' surco'+(np===1?'':'s');st.className='status mono'}
 }
@@ -681,6 +709,10 @@ function drawGuides(c,px){
       if(isH){c.strokeRect(nd.x-s-2*px,nd.y-s-2*px,2*s+4*px,2*s+4*px)}
       c.fillStyle=GUIDE;
     });
+    // nodos donde la pasada no cabe en la curva: anillo rojo
+    if(b)(b.tight||[]).forEach(function(t){var nd=pe.nodes[t.i];if(!nd)return;
+      c.globalAlpha=1;c.strokeStyle='#fff';c.lineWidth=4.5*px;c.beginPath();c.arc(nd.x,nd.y,13*px,0,Math.PI*2);c.stroke();
+      c.strokeStyle=WARN;c.lineWidth=2.5*px;c.stroke();c.strokeStyle=GUIDE;c.globalAlpha=on?1:(hv?.8:.45)});
     // extremo por el que se sigue añadiendo
     if(on&&mode==='add'&&pe.nodes.length){var t=selN===0&&pe.nodes.length>1?pe.nodes[0]:pe.nodes[pe.nodes.length-1];
       c.lineWidth=1.2*px;c.beginPath();c.arc(t.x,t.y,10*px,0,Math.PI*2);c.stroke()}
@@ -757,7 +789,10 @@ function syncFuga(pe){
   }
   Array.prototype.forEach.call(box.children,function(row,j){var nd=pe.nodes[j];if(!nd)return;
     var r=row.querySelector('[type=range]'),m=row.querySelector('[type=number]');r.value=ap(nd);if(document.activeElement!==m)m.value=ap(nd);
-    row.style.color=j===selN?'var(--fg)':''});
+    var t=(built[selP]&&built[selP].tight||[]).filter(function(x){return x.i===j})[0];
+    row.querySelector('span').textContent='Nodo '+(j+1)+(j===0?' · inicio':j===pe.nodes.length-1?' · fin':'')+(t?' · máx '+t.amax+' %':'');
+    row.style.color=t?'var(--warn)':(j===selN?'var(--fg)':'')});
+  $('fajust').disabled=!(built[selP]&&built[selP].tight&&built[selP].tight.length);
   $('ftr').value=pe.tr||'suave';
   var varies=pe.nodes.some(function(nd){return ap(nd)!==100});
   $('finfo').textContent=varies?'Con aperturas distintas, los surcos dejan de ser paralelas exactas y se exportan como curvas Bézier. Esquinas: siempre concéntricas.':'Todas las aperturas al 100 %: los surcos son paralelas exactas (rectas y arcos).';
@@ -904,6 +939,12 @@ $('ftr').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHi
 function setAp(fn){var pe=curP();if(!pe)return;pushHist();pe.nodes.forEach(fn);changed()}
 $('fend').addEventListener('click',function(){var pe=curP();if(pe)setAp(function(nd,j){if(j===pe.nodes.length-1)nd.a=0})});
 $('fini').addEventListener('click',function(){setAp(function(nd,j){if(j===0)nd.a=0})});
+$('fajust').addEventListener('click',function(){
+  // baja la apertura de cada nodo que no cabe hasta el máximo que cabe (con un poco de margen)
+  var pe=curP(),b=built[selP];if(!pe||!b||!b.tight.length)return;pushHist();
+  for(var it=0;it<4&&b.tight.length;it++){b.tight.forEach(function(t){pe.nodes[t.i].a=Math.max(0,Math.floor(t.amax*0.97))});b=AR.build(pe)}
+  changed();
+});
 $('freset').addEventListener('click',function(){setAp(function(nd){nd.a=100})});
 /* extremos: se edita uno (inicio o fin) cada vez */
 var endK='ini';

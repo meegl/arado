@@ -94,17 +94,31 @@ Cada extremo (**Inicio** y **Fin**) tiene sus propios ajustes, que se editan de 
 ## 8. Abanico y fuga (fase 3)
 
 - Cada nodo tiene una **apertura** (`nd.a`, en %, 100 por defecto, de 0 a 400). Es el factor por el que se multiplica la distancia de cada surco a la guía cuando la pasada pasa por ese nodo.
-- **Dónde está cada nodo en la guía:** los extremos, al principio y al final; un nodo con esquina, en el punto medio de su arco; uno sin esquina, en la unión de sus tramos. Entre dos nodos, la apertura se interpola según la longitud recorrida, con una **transición** suave (smoothstep, por defecto, que no deja codos) o lineal (`pasada.tr`).
+- **Dónde está cada nodo en la guía:** los extremos, al principio y al final; un nodo con esquina ocupa **todo su arco**; uno sin esquina, la unión de sus tramos. La apertura es fija mientras dura el arco y solo cambia en las rectas de entre medias, con una **transición** suave (smoothstep, por defecto) o lineal (`pasada.tr`).
+  - *Antes el nodo era el punto medio del arco y la apertura cambiaba también dentro de la curva. Donde la guía pasa de recta a curva, el surco de dentro doblaba de golpe y hacía un codo. Con la apertura fija en el arco y la transición suave (que empieza y acaba sin pendiente), el empalme queda sin codos. Con la transición lineal aún puede verse un codo pequeño.*
 - **Converger en un punto** es apertura 0 en el último (o el primer) nodo; hay botones para hacerlo, y otro para volver todo al 100 %.
 - **Geometría (`fanMaker`):**
   - Solo se usa si algún nodo no está al 100 %; si no, los surcos siguen siendo rectas y arcos exactos.
   - Se muestrea la guía (cada 4 unidades en las rectas y cada 3° en los arcos, también en las esquinas de radio 0), y cada muestra se desplaza por su normal: distancia × apertura.
   - **Esquinas cerradas sin aberraciones.** Cuando un surco interior queda más lejos de la guía que el radio de la curva, su paralela retrocede y hace ganchos y rizos (una «cola de golondrina»). Se arregla en dos pasos:
     1. Se quitan los puntos cuyo tramo va hacia atrás respecto a la tangente de la guía.
-    2. `unloop` corta donde se cruzan la rama que llega y la que sale, y deja una esquina viva.
+    2. `unloop` corta donde se cruzan la rama que llega y la que sale, y deja una esquina viva. Solo quita trozos de hasta 2π · |d| · apertura máxima + 4 muestras. *Antes no tenía límite: cuando un surco se cruzaba consigo mismo lejos (las dos piernas de una curva en U donde la pasada no cabe), perdía un trozo enorme.*
     - *Un primer intento comparaba cada punto con el último guardado: dejaba una punta en cada esquina, en zigzag. Se descartó.*
   - Después se recorta por los extremos (fase 2), se simplifica con Ramer-Douglas-Peucker (tolerancia de 0,2 unidades) y se convierte en curvas Bézier. Las tangentes salen de los vecinos; donde el giro supera 35°, la esquina se respeta.
 - Con aperturas distintas, **Esquinas** no tiene efecto: siempre se comporta como «Concéntricas».
+
+### ¿Cabe la pasada en la curva?
+
+- En cada esquina se calcula la **apertura máxima que cabe** (`res.tight`, con el nodo y `amax`):
+  - **Con radio:** todos los surcos deben girar en arco, es decir, d + grosor/2 ≤ radio efectivo.
+  - **Sin radio (esquina viva):** la esquina del surco de dentro debe caer dentro de sus tramos: d ≤ tramo libre / tan(φ/2).
+  - No se comprueba en «Mismo radio» sin apertura, que tiene su propio aviso de pliegue.
+- Si un nodo pide más apertura de la que cabe:
+  - En el lienzo se marca con un **anillo rojo** (aunque la pasada no esté seleccionada).
+  - La barra de estado dice qué pasada, qué nodo y cuánta apertura cabe.
+  - En la pestaña Fuga, su fila sale en rojo con «máx X %».
+- **Ajustar a la curva** (pestaña Fuga) baja la apertura de esos nodos al 97 % de lo que cabe. Repite hasta cuatro veces por si al cambiar uno cambia otro.
+- Origen: una pasada de 85 mm de ancho en un giro de 136° cuyo radio real se quedaba en 13 mm. Los surcos de dentro no cabían y salían pinchos, ganchos y trozos perdidos. El usuario lo había resuelto a mano bajando la apertura en ese nodo, y el botón hace lo mismo.
 
 ## 9. Panel en pestañas
 
