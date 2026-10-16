@@ -26,6 +26,7 @@ Hacer la base geométrica de carteles hechos con haces de líneas paralelas que 
 
 - `fillet(P, R)`: devuelve tramos alternos (recta, esquina, recta…). En cada esquina, la tangente se separa del vértice t = r · tan(φ/2), donde φ es el ángulo de giro.
 - **Reparto de los tramos:** si dos esquinas piden más longitud de la que tiene el tramo que las une, cada una se recorta en proporción a lo que pide. El radio efectivo puede quedar más pequeño que el pedido.
+- **Radio máximo de una esquina (`rmax`):** el radio con el que la esquina ocupa todo lo que le dejan libre sus tramos, sin quitar sitio a las esquinas vecinas. El slider del radio va de 0 a `rmax`, y tanto el slider como el asa se quedan en ese tope. *Antes el slider llegaba siempre a medio ancho de papel: se quedaba corto para curvas amplias, y además una esquina con un radio enorme acaparaba el tramo compartido y no dejaba crecer a su vecina.* Si un radio guardado es mayor que el que cabe (por ejemplo, después de mover nodos), el panel indica el radio efectivo.
 - `offsetSegs(els, d)`: hace la paralela como lista de tramos con su principio y su final. En una esquina, el radio nuevo es r − s·d, donde s es el lado del centro; el centro es el mismo.
 - **Aviso de pliegue:** si una recta de un surco queda del revés respecto a la guía, el surco se pliega sobre sí mismo. La barra de estado lo avisa en rojo, en los dos modos.
 - Los nodos repetidos seguidos se ignoran (`clean`), y `ix` guarda su índice original para las asas.
