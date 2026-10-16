@@ -99,7 +99,10 @@ Cada extremo (**Inicio** y **Fin**) tiene sus propios ajustes, que se editan de 
 - **Geometría (`fanMaker`):**
   - Solo se usa si algún nodo no está al 100 %; si no, los surcos siguen siendo rectas y arcos exactos.
   - Se muestrea la guía (cada 4 unidades en las rectas y cada 3° en los arcos, también en las esquinas de radio 0), y cada muestra se desplaza por su normal: distancia × apertura.
-  - `unloop` corta los bucles que hacen los surcos interiores en las esquinas cerradas, y deja una esquina viva.
+  - **Esquinas cerradas sin aberraciones.** Cuando un surco interior queda más lejos de la guía que el radio de la curva, su paralela retrocede y hace ganchos y rizos (una «cola de golondrina»). Se arregla en dos pasos:
+    1. Se quitan los puntos cuyo tramo va hacia atrás respecto a la tangente de la guía.
+    2. `unloop` corta donde se cruzan la rama que llega y la que sale, y deja una esquina viva.
+    - *Un primer intento comparaba cada punto con el último guardado: dejaba una punta en cada esquina, en zigzag. Se descartó.*
   - Después se recorta por los extremos (fase 2), se simplifica con Ramer-Douglas-Peucker (tolerancia de 0,2 unidades) y se convierte en curvas Bézier. Las tangentes salen de los vecinos; donde el giro supera 35°, la esquina se respeta.
 - Con aperturas distintas, **Esquinas** no tiene efecto: siempre se comporta como «Concéntricas».
 

@@ -425,7 +425,18 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     }
     S.forEach(function (q) { q.f = apAt(q.s); });
     return function (d) {
-      var P = unloop(S.map(function (q) { return [q.p[0] + q.n[0] * d * q.f, q.p[1] + q.n[1] * d * q.f]; })), out = [];
+      // solo se guardan los puntos que avanzan en el sentido de la guía: cuando
+      // un surco interior queda más lejos que el radio de la curva, su paralela
+      // retrocede y hace ganchos y rizos; quitando el retroceso queda una esquina limpia
+      // (se quitan los trozos que retroceden y unloop corta donde se cruzan las dos ramas)
+      var Q = S.map(function (q) { return [q.p[0] + q.n[0] * d * q.f, q.p[1] + q.n[1] * d * q.f]; });
+      var P = Q.filter(function (p, m) {
+        if (m === 0 || m === Q.length - 1) return true;
+        var q = S[m], o = Q[m - 1];
+        return (p[0] - o[0]) * q.n[1] - (p[1] - o[1]) * q.n[0] > 1e-9;
+      });
+      P = unloop(P);
+      var out = [];
       for (var m = 0; m < P.length - 1; m++) out.push({ k: 'L', a: P[m], b: P[m + 1] });
       return out;
     };
