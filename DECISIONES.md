@@ -62,9 +62,8 @@ Hacer la base geométrica de carteles hechos con haces de líneas paralelas que 
 
 ## 6. Fases pendientes
 
-Hechas: **fase 1** (pasada básica), **fase 2** (extremos escalonados, §7) y **fase 3** (abanico y fuga, §8). Pendientes, en el orden propuesto:
+Hechas: **fase 1** (pasada básica), **fase 2** (extremos escalonados, §7), **fase 3** (abanico y fuga, §8) y **fase 4** (quiebros, §8). Pendientes, en el orden propuesto:
 
-4. **Quiebros:** en un nodo, la pasada se desplaza de lado, toda junta o en escalera surco a surco. Referencia: los escalones del cartel de Aalto.
 5. **Giro 3D y cruces:**
    - Ángulo de giro por nodo, como una cinta: el ancho visible es ancho · |cos θ| y el orden se invierte al pasar de 90°.
    - Cuando una pasada cruza otra, hueco en la de abajo.
@@ -139,6 +138,18 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
 - El cálculo de si la pasada cabe en la curva usa el grosor mayor (primero o último surco) por el grosor del nodo.
 - Esto ya prepara las fases 5 (la cinta que gira se estrecha) y 6 (en perspectiva, el grosor mengua con la profundidad).
 
+### Quiebros (fase 4)
+
+- Cada nodo interior tiene tres valores, en el panel del nodo:
+  - **Quiebro** (`nd.q`): un salto de lado de la pasada, positivo hacia la normal y negativo hacia el otro lado.
+  - **Escalera** (`nd.qe`): cuánto se adelanta el salto de cada surco respecto al anterior a lo largo de la guía. El surco k salta en el centro del nodo más (k − centro) · escalera.
+  - **Largo** (`nd.ql`): lo que ocupa el salto. Con 0 es un escalón en ángulo recto; con más, una rampa suave (smoothstep).
+- Escalera y Largo solo aparecen cuando el quiebro no es 0. En los extremos no hay quiebro.
+- Los saltos se suman al desplazamiento de cada surco: d · apertura + Σ quiebros. Para que el escalón quede exacto, se insertan puntos justo en cada salto (`spineAt` interpola la guía en cualquier longitud). El filtro de retrocesos no toca esos puntos, porque un escalón recto no avanza.
+- Un quiebro hace que la pasada use la geometría muestreada (Bézier), como la apertura.
+- Funciona mejor en un nodo sobre un tramo recto: con «Añadir», un clic sobre la guía mete el nodo. En una esquina, el salto cae a mitad del arco.
+- Referencia: los escalones del cartel de Alvar Aalto.
+
 ## 9. Panel en pestañas
 
 - Al crecer los controles, el panel dejó de caber. Ahora:
@@ -147,6 +158,8 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
   - El **nodo seleccionado** (X, Y, radio y apertura) va fijo encima de las pestañas, con borde azul, y solo aparece si hay un nodo seleccionado.
   - **Exportar** es un solo botón en la barra que abre un menú: Descargar SVG, Descargar PNG (con tamaño y transparencia en el mismo menú) y Copiar SVG. Se cierra al elegir algo, al pulsar fuera o con Esc. Los mensajes salen debajo del lienzo.
     - *Antes eran tres botones sueltos (SVG en azul, PNG y Copiar) y las opciones del PNG estaban en la pestaña Papel. Al usuario no le gustaba, y otra pestaña habrían sido demasiadas.*
+- **Doble clic en una barra** la vuelve a su valor por defecto (atributo `data-def`): 100 % en apertura, grosor y último surco; 0 en quiebro, escalera, largo y azar.
+- Con el foco en una barra o una casilla de verificación, Cmd/Ctrl+Z y Cmd/Ctrl+Y siguen deshaciendo y rehaciendo. En los campos de texto y los desplegables, no.
 - El slider del radio es progresivo: el radio es máx · (s/1000)², donde máx es el doble del lado mayor del papel, o el radio actual si es mayor. Ni el slider ni el asa ponen tope.
   - *Una versión limitó el radio al que «cabía» sin quitar sitio a las vecinas, y le quitaba rango al asa. Se descartó.*
 
