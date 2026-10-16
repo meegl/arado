@@ -229,6 +229,23 @@ El usuario pidió que, si algo de lo que toca rompe el dibujo, el control se pon
   - La barra de estado enumera los dos primeros avisos («y N más»).
 - Con una escalera en el sentido del salto, los surcos no se cruzan; con la escalera al revés, sí, y el aviso propone darle la vuelta.
 
+### Aleatorio y Variar
+
+- En la barra de arriba están **Aleatorio** (`R`), **Variar** (`Mayús+R`) y un menú ▾ con **Receta**, **Locura (%)** y **Aberraciones (%)** (`S.rnd`; sus cambios no van al historial).
+- **No es un aleatorio a ciegas, sino por recetas** sacadas de los carteles de referencia (`RECETAS`):
+  - **Aalto:** una pasada ancha con una o dos curvas grandes y, a veces, un quiebro en escalera (en el sentido que no cruza).
+  - **Cortina coreana:** una a tres pasadas anchas que suben, con finales escalonados (ondas, curva o punta) y puntos. A veces lleva perspectiva de suelo con doblez; entonces la guía y el escalonado se calculan con `Ij` para que los finales caigan dentro del papel.
+  - **Abanico (Bienal):** una pasada que se estrecha en el centro y se abre a los lados, o que gira como una cinta.
+  - **Cintas que se alejan (cartel amarillo):** dos a cinco cintas que suben, se alejan (Tamaño al fondo) y a veces hacen una onda; las de encima dejan hueco.
+  - **Raíces (*Downward root*):** una o dos pasadas finas que bajan y se abren hacia fuera, con finales escalonados.
+- **Locura** (L): amplía los márgenes y la probabilidad de extras (más pasadas o surcos, quiebros, giros). Por encima del 60 %, a veces mezcla otra receta sin perspectiva.
+- **Aberraciones** (A): cuántos avisos se toleran (`round(A·3)`; con el 100 %, todos).
+  - Cada candidata se ajusta primero a las curvas, como «Ajustar a la curva» (`fitAndCount`), y se cuentan sus avisos.
+  - Se prueban hasta 30 candidatas y se queda la primera que cumple o, si ninguna cumple, la que menos avisos tiene, con un mensaje.
+- **Variar** parte de la composición actual y cambia un poco las posiciones, radios, aperturas, quiebros, giros, número de surcos, separación, grosor, escalonado y perspectiva; además, siempre cambia el azar de los extremos. Usa la locura como intensidad (mínimo 8 %) y el mismo filtro de aberraciones.
+- Aleatorio y Variar ocupan una sola entrada del historial, así que un Cmd+Z vuelve a lo anterior.
+- Las recetas sin perspectiva la desactivan; Variar la conserva.
+
 ## 9. Panel en pestañas
 
 - Al crecer los controles, el panel dejó de caber. Ahora:

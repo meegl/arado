@@ -26,6 +26,7 @@ Es de la misma familia que [Mesa de tangentes](https://github.com/meegl/mesa-de-
 - **Perspectiva de suelo** (pestaña Papel): toda la composición se proyecta sobre un suelo que se aleja. Se controla con el ancho de abajo y el de arriba, sin salirse del papel, con horizonte y con un doblez que hace subir el suelo como una pared. Se sigue editando sobre el dibujo proyectado.
 - **Fuga** (apertura por nodo): los surcos se juntan, se abren en abanico o convergen en un punto.
 - Los nodos pueden salir del papel para que las líneas sangren.
+- **Aleatorio** (`R`) y **Variar** (`Mayús+R`): composiciones por recetas sacadas de los carteles de referencia, con controles de locura y de aberraciones permitidas.
 - Doble clic en una barra la vuelve a su valor por defecto.
 - Deshacer y rehacer (`Ctrl+Z`), quitar selección (`Esc`), borrar nodo o pasada (`Supr`), guías (`G`).
 
