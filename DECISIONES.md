@@ -151,6 +151,28 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
 - Funciona mejor en un nodo sobre un tramo recto: con «Añadir», un clic sobre la guía mete el nodo. En una esquina, el salto cae a mitad del arco.
 - Referencia: los escalones del cartel de Alvar Aalto.
 
+### Avisos de aberraciones
+
+El usuario pidió que, si algo de lo que toca rompe el dibujo, el control se ponga en naranja. El programa no sabe si algo es feo, pero sí detecta los problemas geométricos que suelen dar aberraciones (`issues` en `AR`). Cada aviso lleva el nodo que lo provoca (o −1 si es de toda la pasada), los controles que hay que tocar (`ctl`) y un mensaje:
+
+| Problema | Controles en naranja |
+|---|---|
+| La pasada no cabe en la curva (`tight`) | Radio y Apertura del nodo |
+| Esquina sin radio que gira más de 100° con surcos más anchos que su grosor (pinchos) | Radio |
+| Grosor ≥ separación: los surcos se tocan | Separación y Grosor |
+| En un nodo con apertura ≥ 15 %, separación · apertura ≤ grosor · grosor del nodo: los surcos se funden | Apertura y Grosor del nodo |
+| Surcos que desaparecen por el escalonado | Escalonado (Extremos) |
+| Pliegue en «Mismo radio» o en esquinas exactas | Radio |
+| Surcos vecinos que se cruzan (solo con geometría muestreada; `firstCross` usa una rejilla). Se atribuye al nodo más cercano: si tiene quiebro, a Quiebro y Escalera; si no, a Apertura | Quiebro y Escalera, o Apertura |
+
+- La **convergencia buscada** (apertura < 15 % en el nodo) no avisa.
+- En la interfaz:
+  - Las filas de los controles tienen `data-ctl` (y `data-scope="nodo"` las del panel del nodo); `markIssues` les pone la clase `bad`.
+  - También se marcan en naranja las pestañas que contienen un control afectado y las filas de Fuga.
+  - El nodo lleva un anillo naranja en el lienzo, y su panel muestra el mensaje.
+  - La barra de estado enumera los dos primeros avisos («y N más»).
+- Con una escalera en el sentido del salto, los surcos no se cruzan; con la escalera al revés, sí, y el aviso propone darle la vuelta.
+
 ## 9. Panel en pestañas
 
 - Al crecer los controles, el panel dejó de caber. Ahora:
