@@ -62,9 +62,8 @@ Hacer la base geométrica de carteles hechos con haces de líneas paralelas que 
 
 ## 6. Fases pendientes
 
-Hechas: **fase 1** (pasada básica) y **fase 2** (extremos escalonados, ver §7). Pendientes, en el orden propuesto:
+Hechas: **fase 1** (pasada básica), **fase 2** (extremos escalonados, §7) y **fase 3** (abanico y fuga, §8). Pendientes, en el orden propuesto:
 
-3. **Abanico y fuga:** ancho de la pasada por nodo, para que los surcos se junten o se abran por el camino. Opción de converger en un punto. Referencias: cartel coreano y Bienal de China.
 4. **Quiebros:** en un nodo, la pasada se desplaza de lado, toda junta o en escalera surco a surco. Referencia: los escalones del cartel de Aalto.
 5. **Giro 3D y cruces:**
    - Ángulo de giro por nodo, como una cinta: el ancho visible es ancho · |cos θ| y el orden se invierte al pasar de 90°.
@@ -92,15 +91,38 @@ Cada extremo (**Inicio** y **Fin**) tiene sus propios ajustes, que se editan de 
 - **Copiar al otro extremo** copia todos los ajustes del extremo que se está editando.
 - La terminación de los surcos (recta, redonda o cuadrada) se llama **Terminación**, para no confundirla con los remates.
 
-## 8. Limitaciones conocidas e ideas
+## 8. Abanico y fuga (fase 3)
+
+- Cada nodo tiene una **apertura** (`nd.a`, en %, 100 por defecto, de 0 a 400). Es el factor por el que se multiplica la distancia de cada surco a la guía cuando la pasada pasa por ese nodo.
+- **Dónde está cada nodo en la guía:** los extremos, al principio y al final; un nodo con esquina, en el punto medio de su arco; uno sin esquina, en la unión de sus tramos. Entre dos nodos, la apertura se interpola según la longitud recorrida, con una **transición** suave (smoothstep, por defecto, que no deja codos) o lineal (`pasada.tr`).
+- **Converger en un punto** es apertura 0 en el último (o el primer) nodo; hay botones para hacerlo, y otro para volver todo al 100 %.
+- **Geometría (`fanMaker`):**
+  - Solo se usa si algún nodo no está al 100 %; si no, los surcos siguen siendo rectas y arcos exactos.
+  - Se muestrea la guía (cada 4 unidades en las rectas y cada 3° en los arcos, también en las esquinas de radio 0), y cada muestra se desplaza por su normal: distancia × apertura.
+  - `unloop` corta los bucles que hacen los surcos interiores en las esquinas cerradas, y deja una esquina viva.
+  - Después se recorta por los extremos (fase 2), se simplifica con Ramer-Douglas-Peucker (tolerancia de 0,2 unidades) y se convierte en curvas Bézier. Las tangentes salen de los vecinos; donde el giro supera 35°, la esquina se respeta.
+- Con aperturas distintas, **Esquinas** no tiene efecto: siempre se comporta como «Concéntricas».
+
+## 9. Panel en pestañas
+
+- Al crecer los controles, el panel dejó de caber. Ahora:
+  - Cada control ocupa **una sola fila**: nombre, barra y casilla.
+  - Hay **pestañas**: Pasada, Extremos, Fuga y Papel. Papel incluye el formato, la rejilla, las capas visibles y el tamaño del PNG.
+  - El **nodo seleccionado** (X, Y, radio y apertura) va fijo encima de las pestañas, con borde azul, y solo aparece si hay un nodo seleccionado.
+  - **Exportar** (SVG, PNG y Copiar) está en la barra de arriba, y sus mensajes salen debajo del lienzo.
+- El slider del radio es progresivo: el radio es máx · (s/1000)², donde máx es el doble del lado mayor del papel, o el radio actual si es mayor. Ni el slider ni el asa ponen tope.
+  - *Una versión limitó el radio al que «cabía» sin quitar sitio a las vecinas, y le quitaba rango al asa. Se descartó.*
+
+## 10. Limitaciones conocidas e ideas
 
 - En **Mismo radio**, una curva en U más estrecha que la pasada da formas raras. Se avisa, pero no se corrige.
 - El cuerpo de la pasada se detecta por su distancia al polígono de control, no a las curvas reales.
 - No hay rotación ni simetría de pasadas.
 - Los remates siguen la tangente en línea recta, no la curva.
+- La apertura solo se edita con sliders; falta un asa en el lienzo para arrastrarla.
 - No hay aún **Aleatorio**.
 
-## 9. Cómo se trabaja en el proyecto
+## 11. Cómo se trabaja en el proyecto
 
 - **Un único `index.html`**, sin dependencias ni compilación. JavaScript ES5 (`var`, `function`), igual que en Goma y clavos. Interfaz, comentarios y commits en español.
 - Para probar, levanta un servidor estático en la carpeta y abre `http://localhost:8765`:

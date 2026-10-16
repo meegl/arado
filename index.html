@@ -44,9 +44,17 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .mt{margin-top:10px}
 .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .hint{font-size:12px;color:var(--mut);margin:8px 0 0}
-.stack{display:flex;flex-direction:column;gap:10px}
-.sl{display:grid;grid-template-columns:1fr 96px;gap:4px 8px;align-items:center;font-size:12px;color:var(--mut)}
-.sl input[type=range]{grid-column:1/-1}
+.stack{display:flex;flex-direction:column;gap:6px}
+/* fila de control compacta: nombre · barra · casilla */
+.sl{display:grid;grid-template-columns:96px minmax(0,1fr) 68px;grid-template-areas:"l r n";gap:8px;align-items:center;font-size:12px;color:var(--mut)}
+.sl span{grid-area:l;line-height:1.2}
+.sl input[type=range]{grid-area:r;min-width:0}
+.sl input[type=number]{grid-area:n;min-height:30px;padding:4px 6px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:-4px -4px 12px}
+.tabs button{border:0;border-radius:6px 6px 0 0;background:none;min-height:34px;padding:6px 9px;color:var(--mut);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--acc);font-weight:500}
+.bar .push{margin-left:auto}
+#nodesec{border-color:var(--acc)}
 .none{color:var(--mut);font-size:13px;margin:0}
 textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sans Mono",monospace;background:var(--field);color:var(--fg);border:1px solid var(--line);border-radius:6px}
 </style>
@@ -68,22 +76,48 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         <button id="undo" title="Deshacer (Ctrl+Z)">Deshacer</button>
         <button id="redo" title="Rehacer (Ctrl+Mayús+Z)">Rehacer</button>
       </div>
+      <div class="seg push" role="group" aria-label="Exportar">
+        <button id="dl" class="primary" hidden title="Descargar el SVG por capas">SVG</button>
+        <button id="dlpng" hidden title="Descargar PNG (tamaño en la pestaña Papel)">PNG</button>
+        <button id="copy" title="Copiar el SVG al portapapeles">Copiar</button>
+      </div>
     </div>
     <div class="stage" id="stage"><canvas id="cv" aria-label="Lienzo de la composición"></canvas></div>
     <div class="status mono" id="status"></div>
+    <p class="hint" id="exinfo"></p>
+    <textarea id="ta" readonly></textarea>
   </main>
 
   <aside>
-    <section>
-      <h2>Pasada seleccionada</h2>
+    <section id="nodesec" hidden>
+      <h2>Nodo seleccionado</h2>
+      <div class="stack">
+        <div class="sl"><span>X (mm)</span><input type="number" id="nxn" step="0.1"><input type="range" id="nx"></div>
+        <div class="sl"><span>Y (mm)</span><input type="number" id="nyn" step="0.1"><input type="range" id="ny"></div>
+        <div class="sl" id="nrrow"><span>Radio (mm)</span><input type="number" id="nrn" step="0.1" min="0"><input type="range" id="nr"></div>
+        <div class="sl"><span>Apertura (%)</span><input type="number" id="nan" step="1" min="0"><input type="range" id="na"></div>
+      </div>
+      <p class="hint" id="nrinfo"></p>
+      <div class="btns"><button id="ndel" class="danger">Eliminar nodo</button></div>
+    </section>
+
+    <section class="tabbed">
+      <div class="tabs" role="tablist" aria-label="Controles">
+        <button role="tab" data-tab="pasada" aria-selected="true">Pasada</button>
+        <button role="tab" data-tab="extremos" aria-selected="false">Extremos</button>
+        <button role="tab" data-tab="fuga" aria-selected="false">Fuga</button>
+        <button role="tab" data-tab="papel" aria-selected="false">Papel</button>
+      </div>
+
       <p class="none" id="nosel">Pulsa una pasada para editarla, o usa «Nueva pasada» y haz clic en el lienzo para trazar su guía.</p>
-      <div id="pbox" hidden>
+
+      <div class="tabp" data-panel="pasada" id="pbox">
         <div class="stack">
           <div class="sl"><span>Surcos</span><input type="number" id="pnn" step="1" min="1"><input type="range" id="pn"></div>
           <div class="sl"><span>Separación (mm)</span><input type="number" id="psn" step="0.1" min="0.1"><input type="range" id="ps"></div>
           <div class="sl"><span>Grosor (mm)</span><input type="number" id="pwn" step="0.05" min="0.05"><input type="range" id="pw"></div>
         </div>
-        <div class="row field">
+        <div class="row mt">
           <label>Terminación<select id="pcap"><option value="butt">Recta</option><option value="round">Redonda</option><option value="square">Cuadrada</option></select></label>
           <label>Esquinas<select id="pmode"><option value="conc">Concéntricas</option><option value="igual">Mismo radio</option></select></label>
         </div>
@@ -92,8 +126,9 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           <button id="pdup">Duplicar</button>
           <button id="pdel" class="danger">Eliminar pasada</button>
         </div>
+      </div>
 
-        <h3>Extremos</h3>
+      <div class="tabp" data-panel="extremos" id="ebox" hidden>
         <div class="seg" role="group" aria-label="Extremo"><button data-end="ini" aria-pressed="true" title="El extremo del nodo redondo">Inicio</button><button data-end="fin" aria-pressed="false">Fin</button></div>
         <div class="row mt">
           <label>Perfil<select id="eperf"><option value="recto">Recto</option><option value="diagonal">Diagonal</option><option value="punta">Punta</option><option value="curva">Curva</option><option value="ondas">Ondas</option></select></label>
@@ -102,7 +137,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
         <div class="stack mt">
           <div class="sl"><span>Escalonado (mm)</span><input type="number" id="ean" step="0.5" min="0"><input type="range" id="ea"></div>
           <div class="sl" id="eorow"><span>Ondas</span><input type="number" id="eon" step="0.5" min="0.5"><input type="range" id="eo"></div>
-          <div class="sl"><span>Variación al azar (%)</span><input type="number" id="evn" step="1" min="0" max="100"><input type="range" id="ev"></div>
+          <div class="sl"><span>Azar (%)</span><input type="number" id="evn" step="1" min="0" max="100"><input type="range" id="ev"></div>
         </div>
         <div class="btns"><button id="eseed" title="Otra tirada del azar">Otra variación</button><button id="ecopy">Copiar al otro extremo</button></div>
         <div class="row mt">
@@ -112,53 +147,42 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           <div class="sl"><span>Hueco (mm)</span><input type="number" id="ehn" step="0.1" min="0"><input type="range" id="eh"></div>
           <div class="sl"><span>Cantidad</span><input type="number" id="ecn" step="1" min="1" max="9"><input type="range" id="ec"></div>
         </div>
-        <p class="hint">El escalonado recorta cada surco desde su extremo según el perfil. Con perfil recto y variación, los cortes salen al azar. El inicio es el nodo redondo de la guía.</p>
+        <p class="hint">El escalonado recorta cada surco desde su extremo según el perfil. Con perfil recto y azar, los cortes salen aleatorios. El inicio es el nodo redondo de la guía.</p>
+      </div>
 
-        <h3>Nodo seleccionado</h3>
-        <p class="none" id="nonode">Pulsa un nodo de la guía. Arrastra el punto azul de una esquina para cambiar su radio.</p>
-        <div id="nbox" hidden>
-          <div class="stack">
-            <div class="sl"><span>X (mm)</span><input type="number" id="nxn" step="0.1"><input type="range" id="nx"></div>
-            <div class="sl"><span>Y (mm)</span><input type="number" id="nyn" step="0.1"><input type="range" id="ny"></div>
-            <div class="sl" id="nrrow"><span>Radio (mm)</span><input type="number" id="nrn" step="0.1" min="0"><input type="range" id="nr"></div>
-          </div>
-          <p class="hint" id="nrinfo"></p>
-          <div class="btns"><button id="ndel" class="danger">Eliminar nodo</button></div>
+      <div class="tabp" data-panel="fuga" id="fbox" hidden>
+        <p class="hint" style="margin-top:0">Cada nodo tiene una <b>apertura</b>: el porcentaje de la separación que tienen los surcos al pasar por él. Entre dos nodos, los surcos se juntan o se abren poco a poco.</p>
+        <div class="stack mt" id="flist"></div>
+        <div class="row mt">
+          <label>Transición<select id="ftr"><option value="suave">Suave</option><option value="recta">Lineal</option></select></label>
         </div>
+        <div class="btns">
+          <button id="fend" title="Apertura 0 % en el último nodo">Converger al final</button>
+          <button id="fini" title="Apertura 0 % en el primer nodo">Converger al inicio</button>
+          <button id="freset">Todo al 100 %</button>
+        </div>
+        <p class="hint" id="finfo"></p>
       </div>
-    </section>
 
-    <section>
-      <h2>Lienzo y rejilla</h2>
-      <label>Formato<select id="fmt"></select></label>
-      <div class="row field">
-        <label>Columnas<input type="number" id="cols" min="2" max="60" step="1"></label>
-        <label class="inline" style="align-self:end;padding-bottom:6px"><input type="checkbox" id="snap">Imán</label>
+      <div class="tabp" data-panel="papel" id="papbox" hidden>
+        <label>Formato<select id="fmt"></select></label>
+        <div class="row mt">
+          <label>Columnas<input type="number" id="cols" min="2" max="60" step="1"></label>
+          <label class="inline" style="align-self:end;padding-bottom:6px"><input type="checkbox" id="snap">Imán</label>
+        </div>
+        <p class="hint">Con el imán, los nodos van a la rejilla y los radios a cuartos de celda. Los nodos pueden salir del papel para que las líneas sangren.</p>
+        <h3>Capas visibles</h3>
+        <label class="inline"><input type="checkbox" id="sPaper">Fondo de papel</label>
+        <label class="inline"><input type="checkbox" id="sGrid">Rejilla</label>
+        <label class="inline"><input type="checkbox" id="sGuides">Guías de edición (G)</label>
+        <p class="hint">Se exporta lo que ves, salvo las guías, que nunca se exportan.</p>
+        <h3>PNG</h3>
+        <div class="row">
+          <label>Tamaño<select id="pngw"><option value="1200">1200 px de ancho</option><option value="2400" selected>2400 px de ancho</option><option value="3000">3000 px de ancho</option></select></label>
+          <label class="inline" style="align-self:end;padding-bottom:6px"><input type="checkbox" id="pngT">Transparente</label>
+        </div>
+        <p class="hint" id="layinfo"></p>
       </div>
-      <p class="hint">Con el imán, los nodos van a la rejilla y los radios a cuartos de celda. Los nodos pueden salir del papel para que las líneas sangren.</p>
-    </section>
-
-    <section>
-      <h2>Capas visibles</h2>
-      <label class="inline"><input type="checkbox" id="sPaper">Fondo de papel</label>
-      <label class="inline"><input type="checkbox" id="sGrid">Rejilla</label>
-      <label class="inline"><input type="checkbox" id="sGuides">Guías de edición (G)</label>
-      <p class="hint">Se exporta lo que ves, salvo las guías, que nunca se exportan.</p>
-    </section>
-
-    <section>
-      <h2>Exportar</h2>
-      <div class="btns">
-        <button id="dl" class="primary" hidden>Descargar SVG</button>
-        <button id="copy">Copiar SVG</button>
-      </div>
-      <div class="row field">
-        <label>Tamaño PNG<select id="pngw"><option value="1200">1200 px de ancho</option><option value="2400" selected>2400 px de ancho</option><option value="3000">3000 px de ancho</option></select></label>
-        <label class="inline" style="align-self:end;padding-bottom:6px"><input type="checkbox" id="pngT">Transparente</label>
-      </div>
-      <div class="btns"><button id="dlpng" hidden>Descargar PNG</button></div>
-      <textarea id="ta" readonly></textarea>
-      <p class="hint" id="exinfo"></p>
     </section>
   </aside>
 </div>
@@ -193,13 +217,13 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
 
   // quita nodos repetidos seguidos; ix guarda el índice original de cada uno
   function clean(nodes) {
-    var P = [], R = [], ix = [];
+    var P = [], R = [], A = [], ix = [];
     nodes.forEach(function (nd, i) {
       var q = P[P.length - 1];
       if (q && Math.abs(q[0] - nd.x) < EPS && Math.abs(q[1] - nd.y) < EPS) return;
-      P.push([nd.x, nd.y]); R.push(Math.max(0, nd.r || 0)); ix.push(i);
+      P.push([nd.x, nd.y]); R.push(Math.max(0, nd.r || 0)); A.push(nd.a == null ? 100 : Math.max(0, nd.a)); ix.push(i);
     });
-    return { P: P, R: R, ix: ix };
+    return { P: P, R: R, A: A, ix: ix };
   }
 
   // P: vértices, R: radio pedido en cada vértice.
@@ -230,7 +254,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
       var u = segs[i].u, nr = [-u[1], u[0]];
       var A = i > 0 ? add(P[i], mul(u, cor[i - 1].t)) : P[0];
       var B = i < n - 2 ? add(P[i + 1], mul(u, -cor[i].t)) : P[n - 1];
-      els.push({ k: 'L', a: A, b: B, u: u, n: nr });
+      els.push({ k: 'L', a: A, b: B, u: u, n: nr, seg: i });
       if (i < n - 2) {
         var c = cor[i];
         if (c.phi < 1e-6) continue; // recto: sin esquina
@@ -361,16 +385,108 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     return Q;
   }
 
-  // pe: {nodes:[{x,y,r}], n, sep, w, mode, ext:{ini, fin}}
+  /* ---- abanico y fuga (fase 3): apertura por nodo ----
+   * La distancia de cada surco a la guía se multiplica por la apertura, que
+   * se interpola entre nodos a lo largo de la guía. Ya no son paralelas
+   * exactas: se muestrea la guía, se desplaza cada muestra por su normal, se
+   * quitan los bucles de las esquinas interiores y se suaviza con Bézier. */
+  var STEP = 4, ASTEP = Math.PI / 60;
+  function rot(v, t) { var c = Math.cos(t), s = Math.sin(t); return [v[0] * c - v[1] * s, v[0] * s + v[1] * c]; }
+  function fanMaker(els, cl, tr) {
+    // muestras de la guía: punto, normal y longitud recorrida
+    var S = [], pos = 0, at = {}, i, j;
+    els.forEach(function (e, ei) {
+      if (e.k === 'L') {
+        var L = Math.sqrt((e.b[0] - e.a[0]) * (e.b[0] - e.a[0]) + (e.b[1] - e.a[1]) * (e.b[1] - e.a[1])), N = Math.max(1, Math.ceil(L / STEP));
+        for (i = S.length ? 1 : 0; i <= N; i++) S.push({ p: [e.a[0] + (e.b[0] - e.a[0]) * i / N, e.a[1] + (e.b[1] - e.a[1]) * i / N], n: e.n, s: pos + L * i / N });
+        pos += L;
+        if (!(e.seg + 1 in at)) at[e.seg + 1] = pos; // vértice sin esquina: al final de su tramo
+      } else {
+        var sg = (e.n1[0] * e.n2[1] - e.n1[1] * e.n2[0]) >= 0 ? 1 : -1, La = e.r * e.phi;
+        var M = Math.max(2, Math.ceil(e.phi / ASTEP), Math.ceil(La / STEP));
+        for (i = 1; i <= M; i++) {
+          var nn = rot(e.n1, sg * e.phi * i / M);
+          S.push({ p: [e.c[0] - e.s * e.r * nn[0], e.c[1] - e.s * e.r * nn[1]], n: nn, s: pos + La * i / M });
+        }
+        at[e.vi] = pos + La / 2; pos += La;
+      }
+    });
+    var last = cl.P.length - 1, sN = [], aN = [];
+    for (j = 0; j <= last; j++) { sN.push(j === 0 ? 0 : j === last ? pos : at[j]); aN.push(cl.A[j] / 100); }
+    function apAt(s) {
+      for (var q = 0; q < last; q++) {
+        if (s <= sN[q + 1] || q === last - 1) {
+          var span = sN[q + 1] - sN[q], t = span > 1e-9 ? Math.max(0, Math.min(1, (s - sN[q]) / span)) : 1;
+          if (tr !== 'recta') t = t * t * (3 - 2 * t);
+          return aN[q] + (aN[q + 1] - aN[q]) * t;
+        }
+      }
+      return aN[0];
+    }
+    S.forEach(function (q) { q.f = apAt(q.s); });
+    return function (d) {
+      var P = unloop(S.map(function (q) { return [q.p[0] + q.n[0] * d * q.f, q.p[1] + q.n[1] * d * q.f]; })), out = [];
+      for (var m = 0; m < P.length - 1; m++) out.push({ k: 'L', a: P[m], b: P[m + 1] });
+      return out;
+    };
+  }
+  // corta los bucles que hacen los surcos interiores en las esquinas cerradas
+  function unloop(P) {
+    function hit(a, b, c, d) {
+      var r = [b[0] - a[0], b[1] - a[1]], s = [d[0] - c[0], d[1] - c[1]], den = r[0] * s[1] - r[1] * s[0];
+      if (Math.abs(den) < 1e-12) return null;
+      var t = ((c[0] - a[0]) * s[1] - (c[1] - a[1]) * s[0]) / den, u = ((c[0] - a[0]) * r[1] - (c[1] - a[1]) * r[0]) / den;
+      return t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9 ? [a[0] + t * r[0], a[1] + t * r[1]] : null;
+    }
+    P = P.slice();
+    for (var i = 0; i < P.length - 3; i++) {
+      for (var j = Math.min(P.length - 2, i + 600); j >= i + 2; j--) {
+        var X = hit(P[i], P[i + 1], P[j], P[j + 1]);
+        if (X) { P.splice(i + 1, j - i, X); break; }
+      }
+    }
+    return P;
+  }
+  // polilínea → Bézier: quita puntos sobrantes y suaviza, respetando las esquinas vivas
+  function rdp(P, tol) {
+    if (P.length < 3) return P;
+    var keep = new Array(P.length), st = [[0, P.length - 1]]; keep[0] = keep[P.length - 1] = true;
+    while (st.length) {
+      var r = st.pop(), a = P[r[0]], b = P[r[1]], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.sqrt(dx * dx + dy * dy) || 1e-12, mx = -1, mi = -1;
+      for (var i = r[0] + 1; i < r[1]; i++) { var dd = Math.abs((P[i][0] - a[0]) * dy - (P[i][1] - a[1]) * dx) / L; if (dd > mx) { mx = dd; mi = i; } }
+      if (mx > tol) { keep[mi] = true; st.push([r[0], mi], [mi, r[1]]); }
+    }
+    return P.filter(function (p, i) { return keep[i]; });
+  }
+  function unit(x, y) { var l = Math.sqrt(x * x + y * y) || 1; return [x / l, y / l]; }
+  function toDSmooth(segs) {
+    var P = rdp([segs[0].a].concat(segs.map(function (e) { return e.b; })), 0.2), n = P.length, T = [], i;
+    for (i = 0; i < n; i++) {
+      var p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[Math.min(n - 1, i + 1)];
+      var din = unit(p1[0] - p0[0], p1[1] - p0[1]), dout = unit(p2[0] - p1[0], p2[1] - p1[1]);
+      var sharp = i > 0 && i < n - 1 && din[0] * dout[0] + din[1] * dout[1] < Math.cos(35 * Math.PI / 180);
+      T.push(sharp ? { i: din, o: dout } : (function (t) { return { i: t, o: t }; })(i === 0 ? dout : i === n - 1 ? din : unit(p2[0] - p0[0], p2[1] - p0[1])));
+    }
+    var out = ['M' + fmt(P[0][0]) + ' ' + fmt(P[0][1])];
+    for (i = 0; i < n - 1; i++) {
+      var a = P[i], b = P[i + 1], l = Math.sqrt((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1])) / 3;
+      out.push('C' + fmt(a[0] + T[i].o[0] * l) + ' ' + fmt(a[1] + T[i].o[1] * l) + ' ' + fmt(b[0] - T[i + 1].i[0] * l) + ' ' + fmt(b[1] - T[i + 1].i[1] * l) + ' ' + fmt(b[0]) + ' ' + fmt(b[1]));
+    }
+    return out.join('');
+  }
+
+  // pe: {nodes:[{x,y,r,a}], n, sep, w, mode, tr, ext:{ini, fin}}
   // ext.*: {perfil, inv, amp, ondas, vari, seed, deco, hueco, cant}
   function build(pe) {
     var c = clean(pe.nodes), res = { paths: [], dots: [], dashes: [], fold: false, spine: [], ix: c.ix };
     if (c.P.length < 2) return res;
     res.spine = fillet(c.P, c.R);
     var n = Math.max(1, Math.round(pe.n)), k, ext = pe.ext || {}, xi = ext.ini || {}, xf = ext.fin || {};
+    var fan = c.A.some(function (a) { return a !== 100; }) ? fanMaker(res.spine, c, pe.tr) : null;
     for (k = 0; k < n; k++) {
       var d = (k - (n - 1) / 2) * pe.sep, o;
-      if (pe.mode === 'igual') {
+      if (fan) o = { segs: fan(d), fold: false };
+      else if (pe.mode === 'igual') {
         var Q = offsetPoly(c.P, d), j;
         o = offsetSegs(fillet(Q, c.R), 0);
         // un tramo paralelo que va al revés que el de la guía: el surco se pliega
@@ -381,7 +497,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
       var u = n > 1 ? k / (n - 1) : 0.5;
       var sg = trim(o.segs, Math.max(0, xi.amp || 0) * profile(xi, u, k), Math.max(0, xf.amp || 0) * profile(xf, u, k + 1000));
       if (!sg) continue;
-      res.paths.push(toD(sg));
+      res.paths.push(fan ? toDSmooth(sg) : toD(sg));
       var a = sg[0], z = sg[sg.length - 1], da = segDir(a, a.a), dz = segDir(z, z.b);
       decos(xi, a.a, [-da[0], -da[1]], pe.w, res);
       decos(xf, z.b, dz, pe.w, res);
@@ -474,7 +590,7 @@ var $=function(id){return document.getElementById(id)};
 var scale=1, dpr=1;
 
 /* ---------- cálculo ---------- */
-function half(pe){return (Math.max(1,pe.n)-1)/2*pe.sep}
+function half(pe){var m=1;pe.nodes.forEach(function(nd){m=Math.max(m,ap(nd)/100)});return (Math.max(1,pe.n)-1)/2*pe.sep*m}
 function compute(){
   built=S.pasadas.map(function(pe){return AR.build(pe)});
   var st=$('status'), np=0, folds=[];
@@ -571,16 +687,20 @@ function save(){clearTimeout(saveT);saveT=setTimeout(function(){try{localStorage
 function changed(){compute();syncPanel();redraw();save()}
 function layersInfo(){
   var l=[];if(S.show.paper)l.push('fondo');if(S.show.grid)l.push('rejilla');l.push('pasada-1, pasada-2…');
-  $('exinfo').textContent='Capas del SVG: '+l.join(', ')+'. Cada surco es un trazo abierto con su grosor, editable.';
+  $('layinfo').textContent='Capas del SVG: '+l.join(', ')+'. Cada surco es un trazo abierto con su grosor, editable.';
 }
 function syncAll(){
   $('fmt').value=S.fmt;$('cols').value=S.cols;$('snap').checked=S.snap;
   $('sPaper').checked=S.show.paper;$('sGrid').checked=S.show.grid;$('sGuides').checked=S.show.guides;
   updHist();layersInfo();resize();changed();
 }
+var tab='pasada';
 function syncPanel(){
-  var k=K(), pe=S.pasadas[selP];
-  $('pbox').hidden=!pe;$('nosel').hidden=!!pe;
+  var k=K(), pe=S.pasadas[selP], need=tab!=='papel';
+  document.querySelectorAll('[data-tab]').forEach(function(b){b.setAttribute('aria-selected',b.dataset.tab===tab)});
+  document.querySelectorAll('.tabp').forEach(function(p){p.hidden=p.dataset.panel!==tab||(need&&!pe)});
+  $('nosel').hidden=!need||!!pe;
+  var nd=pe&&pe.nodes[selN];$('nodesec').hidden=!nd;
   if(!pe)return;
   cfg('pn',1,80,1,pe.n,1);cfg('ps',0.2,30,0.1,pe.sep*k);cfg('pw',0.05,20,0.05,pe.w*k);
   $('pcap').value=pe.cap;$('pmode').value=pe.mode;
@@ -591,9 +711,10 @@ function syncPanel(){
   cfg('eh',0,20,0.1,x.hueco*k);cfg('ec',1,9,1,x.cant,1);
   $('eorow').hidden=x.perfil!=='ondas';$('edbox').hidden=x.deco==='nada';$('eseed').disabled=!x.vari;
   $('pinfo').textContent='Ancho total: '+(Math.round(((Math.max(1,pe.n)-1)*pe.sep+pe.w)*k*10)/10)+' mm · '+pe.nodes.length+' nodo'+(pe.nodes.length===1?'':'s')+(pe.nodes.length<2?' (añade otro para ver los surcos)':'');
-  var nd=pe.nodes[selN];$('nbox').hidden=!nd;$('nonode').hidden=!!nd;
+  syncFuga(pe);
   if(nd){
-    cfg('nx',-PB*k,(W+PB)*k,0.1,nd.x*k);cfg('ny',-PB*k,(H()+PB)*k,0.1,nd.y*k);var arc=null,b=built[selP];if(b)b.spine.forEach(function(e){if(e.k==='A'&&b.ix[e.vi]===selN)arc=e});
+    cfg('nx',-PB*k,(W+PB)*k,0.1,nd.x*k);cfg('ny',-PB*k,(H()+PB)*k,0.1,nd.y*k);cfg('na',0,400,1,ap(nd),1);
+    var arc=null,b=built[selP];if(b)b.spine.forEach(function(e){if(e.k==='A'&&b.ix[e.vi]===selN)arc=e});
     // slider progresivo: rango amplio sin perder precisión en los radios pequeños
     var rq=(nd.r||0)*k,f=fm();if(!pPushed)nrMax=Math.max(2*Math.max(f.w,f.h),rq);
     var e=$('nr'),m=$('nrn');e.min=0;e.max=1000;e.step=1;e.value=Math.round(Math.sqrt(rq/nrMax)*1000);
@@ -604,6 +725,31 @@ function syncPanel(){
     else info.textContent='';
     $('nrrow').hidden=$('nrinfo').hidden=selN===0||selN===pe.nodes.length-1;
   }
+}
+function ap(nd){return nd.a==null?100:nd.a}
+// lista de aperturas de la pestaña Fuga: se rehace solo si cambian la pasada o sus nodos
+var fKey='';
+function syncFuga(pe){
+  var key=selP+':'+pe.nodes.length, box=$('flist');
+  if(key!==fKey){
+    fKey=key;box.innerHTML='';
+    pe.nodes.forEach(function(nd,j){
+      var row=document.createElement('div');row.className='sl';
+      row.innerHTML='<span>Nodo '+(j+1)+(j===0?' · inicio':j===pe.nodes.length-1?' · fin':'')+'</span><input type="number" step="1" min="0" max="400"><input type="range" min="0" max="400" step="1">';
+      var r=row.querySelector('[type=range]'),m=row.querySelector('[type=number]');
+      function apply(v,end){var p=S.pasadas[selP];if(!p||!p.nodes[j]||!isFinite(v))return;if(!pPushed){pushHist();pPushed=true}p.nodes[j].a=Math.max(0,Math.min(400,Math.round(v)));changed();if(end)pPushed=false}
+      r.addEventListener('input',function(){apply(parseFloat(this.value))});
+      r.addEventListener('change',function(){pPushed=false});
+      m.addEventListener('change',function(){apply(parseFloat(this.value),true)});
+      box.appendChild(row);
+    });
+  }
+  Array.prototype.forEach.call(box.children,function(row,j){var nd=pe.nodes[j];if(!nd)return;
+    var r=row.querySelector('[type=range]'),m=row.querySelector('[type=number]');r.value=ap(nd);if(document.activeElement!==m)m.value=ap(nd);
+    row.style.color=j===selN?'var(--fg)':''});
+  $('ftr').value=pe.tr||'suave';
+  var varies=pe.nodes.some(function(nd){return ap(nd)!==100});
+  $('finfo').textContent=varies?'Con aperturas distintas, los surcos dejan de ser paralelas exactas y se exportan como curvas Bézier. Esquinas: siempre concéntricas.':'Todas las aperturas al 100 %: los surcos son paralelas exactas (rectas y arcos).';
 }
 function cfg(id,mn,mx,st,v,dec){var e=$(id),m=$(id+'n');e.min=mn;e.max=mx;e.step=st;e.value=v;m.max=mx;if(document.activeElement!==m)m.value=dec?Math.round(v):Math.round(v*100)/100}
 
@@ -741,6 +887,13 @@ var nrMax=600;
   e.addEventListener('change',function(){pPushed=false});
   m.addEventListener('change',function(){apply(parseFloat(this.value),true)});
 })();
+document.querySelectorAll('[data-tab]').forEach(function(b){b.addEventListener('click',function(){tab=b.dataset.tab;syncPanel()})});
+bindSl('na',curN,function(nd,v){nd.a=Math.max(0,Math.min(400,Math.round(v)))});
+$('ftr').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.tr=this.value;changed()});
+function setAp(fn){var pe=curP();if(!pe)return;pushHist();pe.nodes.forEach(fn);changed()}
+$('fend').addEventListener('click',function(){var pe=curP();if(pe)setAp(function(nd,j){if(j===pe.nodes.length-1)nd.a=0})});
+$('fini').addEventListener('click',function(){setAp(function(nd,j){if(j===0)nd.a=0})});
+$('freset').addEventListener('click',function(){setAp(function(nd){nd.a=100})});
 /* extremos: se edita uno (inicio o fin) cada vez */
 var endK='ini';
 function curE(){var pe=S.pasadas[selP];return pe&&pe.ext[endK]}
