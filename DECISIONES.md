@@ -160,6 +160,15 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
   - Una pasada que se cruza consigo misma no se corta; queda pendiente.
 - Referencias: Bienal de China (cinta que gira) y cartel amarillo (cruces).
 
+### Alejarse: perspectiva de cada pasada
+
+- Al probar la perspectiva de suelo, el usuario vio que no era lo que buscaba: aplastaba todo el dibujo sobre el suelo y dejaba vacía la mitad de arriba del papel. Lo que pedía, como en el cartel amarillo, es que **cada pasada se aleje por sí misma** a lo largo de su guía.
+- **Tamaño al fondo (%)** (`pasada.lejos`, pestaña Pasada; 100 = no se aleja): el tamaño que tiene la pasada al final de su guía. Separación y grosor se encogen juntos.
+- **Ley de perspectiva real:** si la pasada se aleja a velocidad constante, su tamaño aparente es m = 1 / (1 + α·u), con u de 0 a 1 a lo largo de la guía y α = 1/e − 1, para que al final mida e. Encoge deprisa al principio y cada vez más despacio, no en línea recta.
+- **Empezar al fondo** (`pasada.lejosIni`) invierte el sentido (u → 1 − u): la pasada viene del fondo hacia ti.
+- Se aplica dentro de `fanMaker`, multiplicando apertura y grosor de cada muestra. Por eso la pasada usa la geometría muestreada y se exporta como formas rellenas.
+- La guía se dibuja y se edita como siempre, sin proyección. La perspectiva de suelo (abajo) sigue como opción aparte en Papel.
+
 ### Perspectiva (fase 6)
 
 - Es un ajuste de toda la composición (`S.persp`, en la pestaña Papel): **Ver en perspectiva**, **Horizonte** (altura desde arriba), **Fuga X**, **Profundidad** (D; cuanto menor, más fuerte) y **Escala** (`z`): agranda o reduce toda la perspectiva desde el punto de fuga. Con más del 100 %, el borde de abajo se sale del papel y la composición ocupa más.

@@ -151,6 +151,10 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           <label>Esquinas<select id="pmode"><option value="conc">Concéntricas</option><option value="igual">Mismo radio</option></select></label>
         </div>
         <div class="stack mt">
+          <div class="sl" title="La pasada se aleja a lo largo de su guía: tamaño que tiene al fondo (100 % = no se aleja)"><span>Tamaño al fondo (%)</span><input type="number" id="plejn" step="1" min="3" max="100"><input type="range" id="plej" data-def="100"></div>
+        </div>
+        <label class="inline"><input type="checkbox" id="plejini">Empezar al fondo (viene hacia ti)</label>
+        <div class="stack mt">
           <div class="sl" title="Al pasar por encima de otras pasadas, las corta dejando este hueco"><span>Hueco al cruzar (mm)</span><input type="number" id="phn" step="0.1" min="0"><input type="range" id="ph" data-def="0"></div>
         </div>
         <label class="inline mt"><input type="checkbox" id="pthin">Adelgazar los surcos al girar</label>
@@ -433,7 +437,8 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
    * quitan los bucles de las esquinas interiores y se suaviza con Bézier. */
   var STEP = 4, ASTEP = Math.PI / 60;
   function rot(v, t) { var c = Math.cos(t), s = Math.sin(t); return [v[0] * c - v[1] * s, v[0] * s + v[1] * c]; }
-  function fanMaker(els, cl, tr, thin) {
+  // far: {e, inv} → la pasada se aleja por su guía hasta medir e (0..1) al final (o al principio con inv)
+  function fanMaker(els, cl, tr, thin, far) {
     // muestras de la guía: punto, normal y longitud recorrida
     var S = [], pos = 0, at = {}, i, j;
     els.forEach(function (e, ei) {
@@ -478,6 +483,9 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     S.forEach(function (q) {
       var ct = Math.cos(interp(Tn, q.s));
       q.f = interp(An, q.s) * ct; q.g = interp(Gn, q.s) * (thin ? Math.max(0.04, Math.abs(ct)) : 1);
+      // alejarse (perspectiva de la propia pasada): a velocidad constante hacia el fondo,
+      // el tamaño aparente es 1 / (1 + α·u), con α tal que al final mide e
+      if (far) { var u = pos > 0 ? q.s / pos : 0, m = 1 / (1 + (1 / far.e - 1) * (far.inv ? 1 - u : u)); q.f *= m; q.g *= m; }
       fmax = Math.max(fmax, Math.abs(q.f));
     });
     /* quiebros (fase 4): en un nodo, la pasada salta de lado q. Cada surco salta en
@@ -640,9 +648,10 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
     res.spine = fillet(c.P, c.R);
     var n = Math.max(1, Math.round(pe.n)), k, ext = pe.ext || {}, xi = ext.ini || {}, xf = ext.fin || {};
     var twist = c.T.some(function (t) { return Math.abs(t) > 1e-9; }), thin = twist && pe.thin !== false;
-    var varyG = thin || c.G.some(function (g) { return g !== 100; });
+    var far = pe.lejos > 0 && pe.lejos < 100 ? { e: Math.max(0.03, pe.lejos / 100), inv: !!pe.lejosIni } : null;
+    var varyG = thin || !!far || c.G.some(function (g) { return g !== 100; });
     var hasJog = c.J.some(function (o, i) { return i > 0 && i < c.J.length - 1 && Math.abs(o.q) > 1e-9; });
-    var fan = varyG || hasJog || twist || c.A.some(function (a) { return a !== 100; }) ? fanMaker(res.spine, c, pe.tr, thin) : null;
+    var fan = varyG || hasJog || twist || c.A.some(function (a) { return a !== 100; }) ? fanMaker(res.spine, c, pe.tr, thin, far) : null;
     res.twist = twist;
     // apertura aparente en cada nodo (con el giro, la cinta se ve más estrecha)
     c.Aeff = c.A.map(function (a, j) { return a * Math.abs(Math.cos(c.T[j] * Math.PI / 180)); });
@@ -1120,7 +1129,7 @@ function syncPanel(){
   var nd=pe&&pe.nodes[selN];$('nodesec').hidden=!nd;
   markIssues(pe);
   if(!pe)return;
-  cfg('pn',1,80,1,pe.n,1);cfg('ps',0.2,30,0.1,pe.sep*k);cfg('pw',0.05,20,0.05,pe.w*k);cfg('pwl',0,400,1,pe.wl==null?100:pe.wl,1);cfg('ph',0,10,0.1,(pe.hueco||0)*k);$('pthin').checked=pe.thin!==false;
+  cfg('pn',1,80,1,pe.n,1);cfg('ps',0.2,30,0.1,pe.sep*k);cfg('pw',0.05,20,0.05,pe.w*k);cfg('pwl',0,400,1,pe.wl==null?100:pe.wl,1);cfg('ph',0,10,0.1,(pe.hueco||0)*k);cfg('plej',3,100,1,pe.lejos>0?pe.lejos:100,1);$('plejini').checked=!!pe.lejosIni;$('pthin').checked=pe.thin!==false;
   $('pup').disabled=selP>=S.pasadas.length-1;$('pdown').disabled=selP<=0;$('pwp').value=pe.wp||'lineal';$('pwllab').textContent=(pe.wp&&pe.wp!=='lineal')?'Surco central (%)':'Último surco (%)';
   $('pcap').value=pe.cap;$('pmode').value=pe.mode;
   var x=pe.ext[endK];
@@ -1347,6 +1356,8 @@ bindSl('pvx',curPersp,function(P,v){P.vx=v/K()});
 bindSl('pd',curPersp,function(P,v){P.D=Math.max(10,v/K())});
 bindSl('pz',curPersp,function(P,v){P.z=Math.max(0.1,Math.min(6,v/100))});
 bindSl('nt',curN,function(nd,v){nd.t=Math.max(-360,Math.min(360,Math.round(v)))});
+bindSl('plej',curP,function(pe,v){pe.lejos=Math.max(3,Math.min(100,Math.round(v)))});
+$('plejini').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.lejosIni=this.checked;changed()});
 bindSl('ph',curP,function(pe,v){pe.hueco=Math.max(0,v)/K()});
 $('pthin').addEventListener('change',function(){var pe=curP();if(!pe)return;pushHist();pe.thin=this.checked;changed()});
 // orden de las pasadas: la de más abajo en la lista se dibuja encima

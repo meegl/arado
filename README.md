@@ -22,7 +22,8 @@ Es de la misma familia que [Mesa de tangentes](https://github.com/meegl/mesa-de-
 - **Quiebros:** en un nodo, la pasada salta de lado, toda junta o en escalera, con un escalón recto o una rampa suave.
 - **Giro 3D:** cada nodo puede girar la pasada como una cinta, que se estrecha, se pone de canto y se da la vuelta.
 - **Cruces con hueco:** una pasada corta a las que tiene debajo y deja un hueco. Subir y Bajar cambian el orden.
-- **Perspectiva** (pestaña Papel): toda la composición se proyecta sobre un suelo que se aleja hacia un horizonte y un punto de fuga. Se sigue editando sobre el dibujo proyectado.
+- **Alejarse** (pestaña Pasada): la pasada se hace pequeña a lo largo de su guía, con la proporción de una perspectiva real, o viene del fondo hacia ti.
+- **Perspectiva de suelo** (pestaña Papel): toda la composición se proyecta sobre un suelo que se aleja hacia un horizonte y un punto de fuga. Se sigue editando sobre el dibujo proyectado.
 - **Fuga** (apertura por nodo): los surcos se juntan, se abren en abanico o convergen en un punto.
 - Los nodos pueden salir del papel para que las líneas sangren.
 - Doble clic en una barra la vuelve a su valor por defecto.
