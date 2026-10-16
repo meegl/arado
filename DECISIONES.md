@@ -63,12 +63,8 @@ Hacer la base geométrica de carteles hechos con haces de líneas paralelas que 
 
 ## 6. Fases pendientes
 
-Hechas: **fase 1** (pasada básica), **fase 2** (extremos escalonados, §7), **fase 3** (abanico y fuga, §8) y **fase 4** (quiebros, §8). Pendientes, en el orden propuesto:
+Hechas: **fase 1** (pasada básica), **fase 2** (extremos escalonados, §7), **fase 3** (abanico y fuga, §8), **fase 4** (quiebros, §8) y **fase 5** (giro 3D y cruces, §8). Pendientes:
 
-5. **Giro 3D y cruces:**
-   - Ángulo de giro por nodo, como una cinta: el ancho visible es ancho · |cos θ| y el orden se invierte al pasar de 90°.
-   - Cuando una pasada cruza otra, hueco en la de abajo.
-   - Referencias: Bienal de China y cartel amarillo.
 6. **Perspectiva:** punto de fuga global; grosor y separación menguan con la profundidad. Referencia: cartel amarillo.
 
 ## 7. Extremos escalonados (fase 2)
@@ -151,6 +147,20 @@ Hay dos maneras de variar el grosor, y se pueden combinar:
 - Funciona mejor en un nodo sobre un tramo recto: con «Añadir», un clic sobre la guía mete el nodo. En una esquina, el salto cae a mitad del arco.
 - Referencia: los escalones del cartel de Alvar Aalto.
 
+### Giro 3D y cruces (fase 5)
+
+- **Giro** (`nd.t`, en grados, de −360 a 360, en el panel del nodo): la pasada es una cinta que gira sobre su guía.
+  - Vista de lado, la distancia de cada surco a la guía se multiplica por cos(giro). A 90° la cinta se ve de canto y todos los surcos se juntan; pasado 90°, cos es negativo y la cinta se da la vuelta (los surcos cambian de lado).
+  - El giro se interpola entre nodos como la apertura (fijo en cada arco, transición suave o lineal).
+  - **Adelgazar los surcos al girar** (`pasada.thin`, activado por defecto, en la pestaña Pasada): el grosor también se multiplica por |cos(giro)| (mínimo 4 %). Por eso, con giro y adelgazar, los surcos se exportan como formas rellenas.
+  - Con giro, los avisos usan la apertura aparente (apertura · |cos giro|) y no se avisa de cruces entre surcos vecinos, porque al darse la vuelta se cruzan a propósito.
+- **Cruces con hueco** (`pasada.hueco`, «Hueco al cruzar (mm)» en la pestaña Pasada):
+  - Una pasada con hueco **corta de verdad** los surcos de las pasadas que tiene debajo: quita todo lo que queda a menos de medio grosor de cualquiera de sus surcos más el hueco (`AR.cut`). No es una mancha de color papel encima, así que en Illustrator o Affinity se puede cambiar el fondo.
+  - Los surcos cortados pasan a ser varias piezas en un mismo trazado (varios `M`). Los extremos del corte van rectos; si la terminación es redonda o cuadrada, el hueco se agranda medio grosor para compensar.
+  - El orden de las pasadas es el orden de dibujo: la última de la lista va encima. **Subir** y **Bajar** (pestaña Pasada) la mueven.
+  - Una pasada que se cruza consigo misma no se corta; queda pendiente.
+- Referencias: Bienal de China (cinta que gira) y cartel amarillo (cruces).
+
 ### Avisos de aberraciones
 
 El usuario pidió que, si algo de lo que toca rompe el dibujo, el control se ponga en naranja. El programa no sabe si algo es feo, pero sí detecta los problemas geométricos que suelen dar aberraciones (`issues` en `AR`). Cada aviso lleva el nodo que lo provoca (o −1 si es de toda la pasada), los controles que hay que tocar (`ctl`) y un mensaje:
@@ -193,6 +203,7 @@ El usuario pidió que, si algo de lo que toca rompe el dibujo, el control se pon
 - No hay rotación ni simetría de pasadas.
 - Los remates siguen la tangente en línea recta, no la curva.
 - La apertura solo se edita con sliders; falta un asa en el lienzo para arrastrarla.
+- Los cruces de una pasada consigo misma no dejan hueco.
 - No hay aún **Aleatorio**.
 
 ## 11. Cómo se trabaja en el proyecto

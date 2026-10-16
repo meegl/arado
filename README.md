@@ -20,6 +20,8 @@ Es de la misma familia que [Mesa de tangentes](https://github.com/meegl/mesa-de-
 - **Extremos** (inicio y fin por separado): escalonado con perfil recto, diagonal, punta, curva u ondas, variación al azar y remates de puntos o guiones. El inicio es el nodo redondo.
 - **Grosor variable:** en degradado de un surco a otro, o a lo largo de la guía con un grosor por nodo (entonces los surcos se exportan como formas rellenas).
 - **Quiebros:** en un nodo, la pasada salta de lado, toda junta o en escalera, con un escalón recto o una rampa suave.
+- **Giro 3D:** cada nodo puede girar la pasada como una cinta, que se estrecha, se pone de canto y se da la vuelta.
+- **Cruces con hueco:** una pasada corta a las que tiene debajo y deja un hueco. Subir y Bajar cambian el orden.
 - **Fuga** (apertura por nodo): los surcos se juntan, se abren en abanico o convergen en un punto.
 - Los nodos pueden salir del papel para que las líneas sangren.
 - Doble clic en una barra la vuelve a su valor por defecto.
