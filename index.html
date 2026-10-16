@@ -95,7 +95,7 @@ textarea{display:none;width:100%;height:80px;margin-top:8px;font:12px "Spline Sa
           <button id="rndset" aria-haspopup="true" aria-expanded="false" aria-controls="rndpop" title="Ajustes del aleatorio">▾</button>
         </div>
         <div class="menupop left" id="rndpop" hidden>
-          <label>Receta<select id="rrec"><option value="any">Cualquiera</option><option value="aalto">Aalto</option><option value="coreana">Cortina coreana</option><option value="abanico">Abanico (Bienal)</option><option value="cintas">Cintas que se alejan</option><option value="raices">Raíces</option></select></label>
+          <label>Receta<select id="rrec"><option value="libre">Libre (todo al azar)</option><option value="any">Cualquier estilo</option><option value="aalto">Aalto</option><option value="coreana">Cortina coreana</option><option value="abanico">Abanico (Bienal)</option><option value="cintas">Cintas que se alejan</option><option value="raices">Raíces</option></select></label>
           <div class="sl" title="Con poca, composiciones sobrias; con mucha, más pasadas, giros, quiebros y mezclas"><span>Locura (%)</span><input type="number" id="rlocn" step="1" min="0" max="100"><input type="range" id="rloc" min="0" max="100" step="1" data-def="30"></div>
           <div class="sl" title="Con 0, se descartan las composiciones con avisos naranjas (después de intentar arreglarlas)"><span>Aberraciones (%)</span><input type="number" id="rabn" step="1" min="0" max="100"><input type="range" id="rab" min="0" max="100" step="1" data-def="0"></div>
           <p class="hint">«Aleatorio» crea una composición nueva con la receta; «Variar» cambia la que tienes, más o menos según la locura. Todo se deshace con Cmd+Z.</p>
@@ -953,7 +953,7 @@ var FORMATS=[
 var GUIDE='#2B4BFF', WARN='#F06A1E';
 var S, hist=[], redo=[], mode='move', selP=-1, selN=-1, hover=null, drag=null, built=[], raf=0, saveT=0;
 
-function defaults(){return {fmt:'a4v',cols:12,snap:true,pasadas:[],show:{paper:true,grid:true,guides:true},persp:null,rnd:{receta:'any',locura:30,aber:0}}}
+function defaults(){return {fmt:'a4v',cols:12,snap:true,pasadas:[],show:{paper:true,grid:true,guides:true},persp:null,rnd:{receta:'libre',locura:30,aber:0}}}
 var fresh=true;
 function load(){
   var d=defaults();
@@ -962,7 +962,7 @@ function load(){
       fresh=false;d.fmt=j.fmt;d.cols=+j.cols||12;d.snap=!!j.snap;d.pasadas=j.pasadas;d.pasadas.forEach(fixExt);
       if(j.show)['paper','grid','guides'].forEach(function(k){if(k in j.show)d.show[k]=!!j.show[k]});
       if(j.persp)d.persp=j.persp;
-      if(j.rnd)d.rnd=j.rnd;
+      if(j.rnd){d.rnd=j.rnd;if(d.rnd.receta==='any')d.rnd.receta='libre'} // Libre pasó a ser la receta por defecto
     }}catch(e){}
   return d;
 }
@@ -1521,6 +1521,40 @@ function perspOff(){var P=JSON.parse(JSON.stringify(persp()));P.on=false;return 
 // quiebro en escalera en el sentido que no cruza los surcos (escalera al revés que el salto)
 function jog(L,sep){var sg=pick([1,-1]);return {q:sg*sep*rr(1,2.5+L*2),qe:-sg*sep*rr(0.4,1.2),ql:chance(0.5)?0:mmU(rr(2,8+L*10))}}
 var RECETAS={
+  libre:function(L){
+    // sin estilo: guías que giran al azar y cualquier combinación de opciones;
+    // la locura decide cuántas entran a la vez y lo extremas que son
+    var HH=H(),cl=cell(),np=1+Math.floor(rr(0,1.5+L*3.5)),out=[],P=null;
+    if(chance(0.12+0.3*L)){P={on:true,vx:rr(0.2,0.8)*W,B:rr(1.2,2.8),T:rr(0.15,0.8),hz:null,fold:chance(0.5),fd:rr(0.25,0.6)*HH,fr:chance(0.5)?0:cl*rr(0.3,2)}}
+    for(var i=0;i<np;i++){
+      var thin=chance(0.4),n=Math.round(thin?rr(15,45+L*30):rr(3,18+L*10)),sep=mmU(thin?rr(2,4):rr(3.5,12)),w=sep*rr(thin?0.25:0.35,0.65);
+      // guía: un paseo con giros desde fuera del papel
+      var k=2+Math.floor(rr(0,2+L*2)),side=pick(['b','t','l','r']),x,y,ang;
+      if(side==='b'){x=rr(0.1,0.9)*W;y=HH+PB*0.6;ang=-Math.PI/2}else if(side==='t'){x=rr(0.1,0.9)*W;y=-PB*0.6;ang=Math.PI/2}
+      else if(side==='l'){x=-PB*0.6;y=rr(0.1,0.9)*HH;ang=0}else{x=W+PB*0.6;y=rr(0.1,0.9)*HH;ang=Math.PI}
+      var nodes=[{x:x,y:y,r:0}],step=(W+HH)/2/k*rr(0.8,1.5);
+      for(var j=1;j<=k;j++){
+        ang+=rr(-1,1)*(0.4+L*1.4);x+=Math.cos(ang)*step;y+=Math.sin(ang)*step;
+        x=Math.max(-PB*0.6,Math.min(W+PB*0.6,x));y=Math.max(-PB*0.6,Math.min(HH+PB*0.6,y));
+        nodes.push({x:x,y:y,r:0});
+      }
+      var hw=(n-1)/2*sep;
+      for(j=1;j<nodes.length-1;j++){nodes[j].r=chance(0.15)?0:hw+cl*rr(0.2,3+L*3)}
+      var o={n:n,sep:sep,w:w,cap:pick(['butt','butt','round','square'])};
+      if(chance(0.15+0.4*L))nodes.forEach(function(nd){nd.a=Math.round(rr(30,100+L*150))});
+      if(chance(0.1+0.3*L))nodes.forEach(function(nd){nd.g=Math.round(rr(40,100+L*150))});
+      if(chance(0.15+0.3*L)){o.wl=Math.round(rr(30,300));o.wp=pick(['lineal','punta','curva'])}
+      if(nodes.length>2&&chance(0.1+0.4*L)){var jj=jog(L,sep),m=1+Math.floor(rr(0,nodes.length-2));nodes[m].q=jj.q;nodes[m].qe=jj.qe;nodes[m].ql=jj.ql}
+      if(nodes.length>2&&chance(0.05+0.3*L))nodes[1+Math.floor(rr(0,nodes.length-2))].t=Math.round(rr(60,180))*pick([1,-1]);
+      if(chance(0.1+0.25*L))o.lejos=Math.round(rr(15,60));
+      if(i>0&&chance(0.3+0.4*L))o.hueco=mmU(rr(1,3));
+      var ext={ini:defExt(),fin:defExt()};
+      ['ini','fin'].forEach(function(e){if(chance(e==='fin'?0.35+0.3*L:0.1+0.2*L))ext[e]={perfil:pick(['diagonal','punta','curva','ondas']),inv:chance(0.5),amp:rr(0.05,0.25+L*0.2)*HH,ondas:rr(1,4),vari:rr(0,30+L*50),seed:seedR(),deco:pick(['nada','nada','punto','guion']),hueco:mmU(rr(1,3)),cant:pick([1,1,2,3])}});
+      o.ext=ext;
+      out.push(mkPasada(nodes,o));
+    }
+    return {pasadas:out,persp:P};
+  },
   aalto:function(L){
     var HH=H(),c=cell(),n=Math.round(rr(8,14)+L*12),sep=mmU(rr(3.5,6)),w=sep*rr(0.45,0.65),hw=(n-1)/2*sep;
     var x0=rr(0.15,0.45)*W,yc=rr(0.35,0.65)*HH,right=chance(0.5),x1=right?Math.max(rr(0.65,1.0)*W,x0+0.3*W):Math.min(rr(0,0.35)*W,x0-0.3*W);
@@ -1601,9 +1635,10 @@ function generate(make){
 }
 function randomComposition(){
   generate(function(L){
-    var r=S.rnd.receta&&S.rnd.receta!=='any'?S.rnd.receta:pick(Object.keys(RECETAS)),c=RECETAS[r](L);
+    // «Cualquier estilo» elige entre las recetas de los carteles (no la libre)
+    var r=S.rnd.receta&&S.rnd.receta!=='any'?S.rnd.receta:pick(Object.keys(RECETAS).filter(function(x){return x!=='libre'})),c=RECETAS[r||'libre'](L);
     // con mucha locura, a veces se mezcla otra receta (sin perspectiva, para que no se pisen)
-    if(L>0.6&&!c.persp&&chance((L-0.6)*1.5)){var o=pick(['aalto','abanico','cintas','raices'].filter(function(x){return x!==r}));c.pasadas=c.pasadas.concat(RECETAS[o](L).pasadas)}
+    if(r!=='libre'&&L>0.6&&!c.persp&&chance((L-0.6)*1.5)){var o=pick(['aalto','abanico','cintas','raices'].filter(function(x){return x!==r}));c.pasadas=c.pasadas.concat(RECETAS[o](L).pasadas)}
     return c;
   });
 }

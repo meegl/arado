@@ -232,7 +232,12 @@ El usuario pidió que, si algo de lo que toca rompe el dibujo, el control se pon
 ### Aleatorio y Variar
 
 - En la barra de arriba están **Aleatorio** (`R`), **Variar** (`Mayús+R`) y un menú ▾ con **Receta**, **Locura (%)** y **Aberraciones (%)** (`S.rnd`; sus cambios no van al historial).
-- **No es un aleatorio a ciegas, sino por recetas** sacadas de los carteles de referencia (`RECETAS`):
+- **Libre** (receta por defecto): el usuario prefirió algo más aleatorio que los estilos. Sin cartel de referencia:
+  - De una a varias pasadas (más con locura), finas o gruesas, con guías que salen de fuera del papel por cualquier lado y giran al azar (más con locura), y radios variados.
+  - Cualquier combinación de apertura, grosor por nodo, degradado entre surcos, quiebros, giro 3D, alejarse, hueco en los cruces, escalonados con remates y, a veces, perspectiva con doblez. La probabilidad de cada cosa sube con la locura.
+  - El filtro de aberraciones sigue igual, y es lo que evita que salga una maraña rota.
+  - Un estado guardado con «Cualquiera» pasa a «Libre» al cargarse.
+- **Cualquier estilo** elige entre las recetas de los carteles:
   - **Aalto:** una pasada ancha con una o dos curvas grandes y, a veces, un quiebro en escalera (en el sentido que no cruza).
   - **Cortina coreana:** una a tres pasadas anchas que suben, con finales escalonados (ondas, curva o punta) y puntos. A veces lleva perspectiva de suelo con doblez; entonces la guía y el escalonado se calculan con `Ij` para que los finales caigan dentro del papel.
   - **Abanico (Bienal):** una pasada que se estrecha en el centro y se abre a los lados, o que gira como una cinta.
